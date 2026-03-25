@@ -18,7 +18,15 @@ async function bootstrap() {
       console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {
-    console.error('Server startup failed:', error.message);
+    console.error('Server startup failed:', error?.message || error);
+    if (error?.stack) {
+      console.error(error.stack);
+    }
+    console.error('Startup env check:', {
+      hasMongoUri: Boolean(env.MONGO_URI),
+      hasJwtSecret: Boolean(env.JWT_SECRET),
+      clientUrl: env.CLIENT_URL || null,
+    });
     process.exit(1);
   }
 }
