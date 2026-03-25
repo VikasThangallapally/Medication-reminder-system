@@ -1,0 +1,52 @@
+import { NavLink } from 'react-router-dom';
+
+const navItems = [
+  { to: '/dashboard', label: 'Dashboard' },
+  { to: '/dashboard#add', label: 'Add Medicine' },
+  { to: '/dashboard#history', label: 'History' },
+];
+
+export default function Sidebar({ open, onClose, user }) {
+  return (
+    <>
+      <aside
+        className={`glass-panel fixed inset-y-0 left-0 z-40 m-3 flex w-64 transform flex-col rounded-2xl px-4 py-6 transition-transform duration-200 md:static md:translate-x-0 ${
+          open ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <h2 className="px-3 font-display text-xl text-cyan-50">MediTrack</h2>
+        <nav className="mt-6 flex flex-col gap-2">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              onClick={onClose}
+              className={({ isActive }) =>
+                `rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                  isActive
+                    ? 'bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 text-slate-950'
+                    : 'text-cyan-100/90 hover:bg-cyan-500/15'
+                }`
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="mt-auto rounded-xl border border-cyan-300/20 bg-slate-900/45 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-wider text-cyan-200/70">Signed in as</p>
+          <p className="text-lg font-semibold leading-tight text-cyan-100">{user?.name || 'User'}</p>
+        </div>
+      </aside>
+
+      {open && (
+        <button
+          aria-label="Close menu"
+          onClick={onClose}
+          className="fixed inset-0 z-30 bg-slate-900/35 md:hidden"
+        />
+      )}
+    </>
+  );
+}
