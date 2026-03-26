@@ -1,6 +1,37 @@
 import nodemailer from 'nodemailer';
 import { getSmtpCredentials, hydrateSmtpCredentialsFromEnv } from './credentialStore.js';
 
+function normalizeSmtpConfig(config) {
+  if (!config) {
+    return null;
+  }
+
+  const host = String(config.host || '').trim();
+  const user = String(config.user || '').trim();
+  const port = Number(config.port || 587);
+  const from = String(config.from || user || '').trim();
+  let pass = String(config.pass || '');
+
+  // Gmail app passwords are shown with spaces in UI, but SMTP expects raw characters.
+  if (/gmail\.com$/i.test(host)) {
+    pass = pass.replace(/\s+/g, '');
+  } else {
+    pass = pass.trim();
+  }
+
+  if (!host || !user || !pass) {
+    return null;
+  }
+
+  return {
+    host,
+    port,
+    user,
+    pass,
+    from,
+  };
+}
+
 function getEnvSmtpConfig() {
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
@@ -21,10 +52,10 @@ function getEnvSmtpConfig() {
 
 async function createTransport() {
   await hydrateSmtpCredentialsFromEnv();
-  const envConfig = getEnvSmtpConfig();
+  const envConfig = normalizeSmtpConfig(getEnvSmtpConfig());
   const dbConfig = await getSmtpCredentials();
-  const hasDbConfig = Boolean(dbConfig?.host && dbConfig?.user && dbConfig?.pass);
-  const config = envConfig || (hasDbConfig ? dbConfig : null);
+  const normalizedDbConfig = normalizeSmtpConfig(dbConfig);
+  const config = envConfig || normalizedDbConfig;
 
   if (!config) {
     return { transporter: null, from: null, reason: 'SMTP is not configured (env or MongoDB credentials missing)' };
