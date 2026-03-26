@@ -1,6 +1,9 @@
 import nodemailer from 'nodemailer';
 import { getSmtpCredentials, hydrateSmtpCredentialsFromEnv } from './credentialStore.js';
 
+const SMTP_SEND_ATTEMPTS = Math.max(1, Number(process.env.SMTP_SEND_ATTEMPTS || 3));
+const SMTP_RETRY_DELAY_MS = Math.max(200, Number(process.env.SMTP_RETRY_DELAY_MS || 1000));
+
 function sanitizeEmailAddress(value) {
   return String(value || '').trim().toLowerCase();
 }
@@ -68,6 +71,32 @@ function getEnvSmtpConfig() {
   };
 }
 
+function delay(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function isRetryableError(error) {
+  const code = String(error?.code || '').toUpperCase();
+  const responseCode = Number(error?.responseCode || 0);
+  const retryableCodes = new Set([
+    'ETIMEDOUT',
+    'ECONNECTION',
+    'ECONNRESET',
+    'EHOSTUNREACH',
+    'ENOTFOUND',
+    'ESOCKET',
+  ]);
+
+  if (retryableCodes.has(code)) {
+    return true;
+  }
+
+  // 4xx SMTP responses are usually temporary and worth retrying.
+  return responseCode >= 400 && responseCode < 500;
+}
+
 async function createTransport() {
   await hydrateSmtpCredentialsFromEnv();
   const envConfig = normalizeSmtpConfig(getEnvSmtpConfig());
@@ -83,11 +112,29 @@ async function createTransport() {
     host: config.host,
     port: Number(config.port || 587),
     secure: Number(config.port || 587) === 465,
+    requireTLS: Number(config.port || 587) !== 465,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
     auth: {
       user: config.user,
       pass: config.pass,
     },
+    tls: {
+      servername: config.host,
+      minVersion: 'TLSv1.2',
+    },
   });
+
+  try {
+    await transporter.verify();
+  } catch (error) {
+    return {
+      transporter: null,
+      from: null,
+      reason: `SMTP verify failed: ${error?.message || 'unknown error'}`,
+    };
+  }
 
   return {
     transporter,
@@ -107,27 +154,41 @@ export default async function sendSmtpMail({ to, subject, html, text }) {
     return { sent: false, reason: 'Missing recipient email address' };
   }
 
-  try {
-    const info = await transporter.sendMail({
-      from,
-      to: recipients,
-      subject,
-      html,
-      text,
-    });
+  let lastError = null;
 
-    const accepted = Array.isArray(info.accepted) ? info.accepted.length : 0;
-    const rejected = Array.isArray(info.rejected) ? info.rejected : [];
+  for (let attempt = 1; attempt <= SMTP_SEND_ATTEMPTS; attempt += 1) {
+    try {
+      const info = await transporter.sendMail({
+        from,
+        to: recipients,
+        subject,
+        html,
+        text,
+      });
 
-    if (!accepted || rejected.length === recipients.length) {
-      return {
-        sent: false,
-        reason: `SMTP rejected recipient(s): ${rejected.join(', ') || recipients.join(', ')}`,
-      };
+      const accepted = Array.isArray(info.accepted) ? info.accepted.length : 0;
+      const rejected = Array.isArray(info.rejected) ? info.rejected : [];
+
+      if (!accepted || rejected.length === recipients.length) {
+        return {
+          sent: false,
+          reason: `SMTP rejected recipient(s): ${rejected.join(', ') || recipients.join(', ')}`,
+        };
+      }
+
+      return { sent: true };
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableError(error) || attempt === SMTP_SEND_ATTEMPTS) {
+        break;
+      }
+
+      await delay(SMTP_RETRY_DELAY_MS * attempt);
     }
-
-    return { sent: true };
-  } catch (error) {
-    return { sent: false, reason: error.message || 'Unable to send email' };
   }
+
+  return {
+    sent: false,
+    reason: lastError?.message || 'Unable to send email',
+  };
 }
