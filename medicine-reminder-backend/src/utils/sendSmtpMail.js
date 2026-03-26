@@ -21,12 +21,13 @@ function getEnvSmtpConfig() {
 
 async function createTransport() {
   await hydrateSmtpCredentialsFromEnv();
+  const envConfig = getEnvSmtpConfig();
   const dbConfig = await getSmtpCredentials();
   const hasDbConfig = Boolean(dbConfig?.host && dbConfig?.user && dbConfig?.pass);
-  const config = hasDbConfig ? dbConfig : getEnvSmtpConfig();
+  const config = envConfig || (hasDbConfig ? dbConfig : null);
 
   if (!config) {
-    return { transporter: null, from: null, reason: 'SMTP is not configured in MongoDB credentials' };
+    return { transporter: null, from: null, reason: 'SMTP is not configured (env or MongoDB credentials missing)' };
   }
 
   const transporter = nodemailer.createTransport({

@@ -4,6 +4,15 @@ import User from '../models/User.js';
 import sendPasswordResetEmail from '../utils/sendPasswordResetEmail.js';
 import generateToken from '../utils/generateToken.js';
 
+function getClientBaseUrl() {
+  const configured = (process.env.CLIENT_URL || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return configured[0] || 'http://localhost:5173';
+}
+
 function serializeUser(user) {
   return {
     id: String(user._id),
@@ -82,7 +91,7 @@ export async function forgotPassword(req, res, next) {
     user.resetPasswordExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await user.save();
 
-    const baseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const baseUrl = getClientBaseUrl();
     const resetUrl = `${baseUrl}/reset-password?token=${rawToken}`;
     const resetPath = `/reset-password?token=${rawToken}`;
     const emailResult = await sendPasswordResetEmail({
