@@ -8,6 +8,7 @@ import { emitMedicineReminder } from '../socket/socketServer.js';
 let jobsStarted = false;
 const emittedReminderKeys = new Set();
 const REMINDER_TIMEZONE = process.env.REMINDER_TIMEZONE || 'Asia/Kolkata';
+const REMINDER_GRACE_MINUTES = Math.max(1, Number(process.env.REMINDER_GRACE_MINUTES || 5));
 
 function getZonedParts(date = new Date()) {
   const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -47,6 +48,52 @@ function toTimeKey(date) {
   return getZonedParts(date).timeKey;
 }
 
+function timeKeyToMinutes(timeKey) {
+  const [hourPart, minutePart] = String(timeKey || '').split(':');
+  const hour = Number(hourPart);
+  const minute = Number(minutePart);
+
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) {
+    return null;
+  }
+
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    return null;
+  }
+
+  return hour * 60 + minute;
+}
+
+function getReminderWindowMinutes(nowTimeKey) {
+  const currentMinute = timeKeyToMinutes(nowTimeKey);
+  if (currentMinute === null) {
+    return { windowStartMinute: 0, windowEndMinute: 0 };
+  }
+
+  return {
+    windowStartMinute: Math.max(0, currentMinute - REMINDER_GRACE_MINUTES),
+    windowEndMinute: currentMinute,
+  };
+}
+
+function isInReminderWindow(slot, windowStartMinute, windowEndMinute) {
+  const slotMinute = timeKeyToMinutes(slot);
+  if (slotMinute === null) {
+    return false;
+  }
+
+  return slotMinute >= windowStartMinute && slotMinute <= windowEndMinute;
+}
+
+function isBeforeReminderWindow(slot, windowStartMinute) {
+  const slotMinute = timeKeyToMinutes(slot);
+  if (slotMinute === null) {
+    return false;
+  }
+
+  return slotMinute < windowStartMinute;
+}
+
 function isActiveToday(medicine, todayDateKey, todayWeekday) {
   const start = toDateKey(new Date(medicine.startDate));
   const end = toDateKey(new Date(medicine.endDate));
@@ -69,6 +116,7 @@ export function startCronJobs() {
       const dateKey = toDateKey(now);
       const timeKey = toTimeKey(now);
       const todayWeekday = weekdayKey(now);
+      const { windowStartMinute, windowEndMinute } = getReminderWindowMinutes(timeKey);
 
       const medicines = await Medicine.find({ user: { $exists: true, $ne: null } })
         .populate('user', 'name email')
@@ -84,55 +132,65 @@ export function startCronJobs() {
 
       const logLookup = new Set(todayLogs.map((log) => `${String(log.medicine)}_${log.time}`));
 
-      const dueMedicines = medicines.filter(
-        (medicine) =>
-          isActiveToday(medicine, dateKey, todayWeekday) && Array.isArray(medicine.timeSlots) && medicine.timeSlots.includes(timeKey)
-      );
+      const dueMedicines = activeMedicines.filter((medicine) => {
+        const slots = Array.isArray(medicine.timeSlots) ? medicine.timeSlots : [];
+        return slots.some((slot) => {
+          const slotLogKey = `${String(medicine._id)}_${slot}`;
+          return isInReminderWindow(slot, windowStartMinute, windowEndMinute) && !logLookup.has(slotLogKey);
+        });
+      });
 
       for (const medicine of dueMedicines) {
         const medicineId = String(medicine._id);
-        const eventKey = `${medicineId}_${dateKey}_${timeKey}`;
-
-        if (emittedReminderKeys.has(eventKey)) {
-          continue;
-        }
-
-        emittedReminderKeys.add(eventKey);
         const userEmail = medicine?.user?.email;
         const userName = medicine?.user?.name || 'User';
+        const dueSlots = (Array.isArray(medicine.timeSlots) ? medicine.timeSlots : []).filter((slot) => {
+          const slotLogKey = `${medicineId}_${slot}`;
+          return isInReminderWindow(slot, windowStartMinute, windowEndMinute) && !logLookup.has(slotLogKey);
+        });
 
-        if (userEmail) {
-          const emailResult = await sendMedicineReminderEmail({
-            to: userEmail,
-            name: userName,
+        for (const slot of dueSlots) {
+          const eventKey = `${medicineId}_${dateKey}_${slot}`;
+
+          if (emittedReminderKeys.has(eventKey)) {
+            continue;
+          }
+
+          emittedReminderKeys.add(eventKey);
+
+          if (userEmail) {
+            const emailResult = await sendMedicineReminderEmail({
+              to: userEmail,
+              name: userName,
+              medicineName: medicine.name,
+              dosage: medicine.dosage,
+              date: dateKey,
+              time: slot,
+              medicineId,
+              userId: String(medicine?.user?._id || medicine.user),
+            });
+
+            if (!emailResult.sent) {
+              console.warn(
+                `[Reminder Email Failed] ${dateKey} ${slot} | medicine=${medicine.name} | reason=${emailResult.reason}`
+              );
+            }
+          }
+
+          const event = {
+            medicineId,
             medicineName: medicine.name,
             dosage: medicine.dosage,
             date: dateKey,
-            time: timeKey,
-            medicineId,
+            time: slot,
             userId: String(medicine?.user?._id || medicine.user),
-          });
+          };
 
-          if (!emailResult.sent) {
-            console.warn(
-              `[Reminder Email Failed] ${dateKey} ${timeKey} | medicine=${medicine.name} | reason=${emailResult.reason}`
-            );
-          }
+          emitMedicineReminder(event);
+          console.log(
+            `[Reminder Event] ${dateKey} ${slot} | medicine=${medicine.name} | dosage=${medicine.dosage}`
+          );
         }
-
-        const event = {
-          medicineId,
-          medicineName: medicine.name,
-          dosage: medicine.dosage,
-          date: dateKey,
-          time: timeKey,
-          userId: String(medicine?.user?._id || medicine.user),
-        };
-
-        emitMedicineReminder(event);
-        console.log(
-          `[Reminder Event] ${dateKey} ${timeKey} | medicine=${medicine.name} | dosage=${medicine.dosage}`
-        );
       }
 
       for (const medicine of activeMedicines) {
@@ -141,7 +199,7 @@ export function startCronJobs() {
         const slots = Array.isArray(medicine.timeSlots) ? medicine.timeSlots : [];
 
         for (const slot of slots) {
-          if (slot >= timeKey) {
+          if (!isBeforeReminderWindow(slot, windowStartMinute)) {
             continue;
           }
 
