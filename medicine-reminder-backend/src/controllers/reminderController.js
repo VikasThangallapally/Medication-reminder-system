@@ -220,21 +220,29 @@ export async function markReminder(req, res, next) {
 
     const userEmail = medicine?.user?.email;
     if (userEmail) {
-      const emailResult = await sendDoseStatusEmail({
-        to: userEmail,
-        name: medicine?.user?.name || 'User',
-        medicineName: medicine.name,
-        dosage: medicine.dosage,
-        date,
-        time,
-        status,
-      });
+      void (async () => {
+        try {
+          const emailResult = await sendDoseStatusEmail({
+            to: userEmail,
+            name: medicine?.user?.name || 'User',
+            medicineName: medicine.name,
+            dosage: medicine.dosage,
+            date,
+            time,
+            status,
+          });
 
-      if (!emailResult.sent) {
-        console.warn(
-          `[Status Email Failed] medicine=${medicine.name} | date=${date} | time=${time} | status=${status} | reason=${emailResult.reason}`
-        );
-      }
+          if (!emailResult.sent) {
+            console.warn(
+              `[Status Email Failed] medicine=${medicine.name} | date=${date} | time=${time} | status=${status} | reason=${emailResult.reason}`
+            );
+          }
+        } catch (mailError) {
+          console.warn(
+            `[Status Email Failed] medicine=${medicine.name} | date=${date} | time=${time} | status=${status} | reason=${mailError.message || 'unknown'}`
+          );
+        }
+      })();
     }
 
     return res.status(200).json({ message: 'Reminder marked successfully', log });

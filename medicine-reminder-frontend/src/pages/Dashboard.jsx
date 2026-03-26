@@ -96,7 +96,9 @@ export default function Dashboard() {
       allMedicines.filter((item) => {
         const end = (item.endDate || '').slice(0, 10);
         const hasHistoryLogs = Array.isArray(item.logs) && item.logs.length > 0;
-        return hasHistoryLogs || (end && end < todayKey);
+        const hasStatusChanges = Array.isArray(item.timeSlots)
+          && item.timeSlots.some((slot) => slot?.status && slot.status !== 'pending');
+        return hasHistoryLogs || hasStatusChanges || (end && end < todayKey);
       }),
     [allMedicines, todayKey]
   );
