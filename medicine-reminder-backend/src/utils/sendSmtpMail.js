@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns/promises';
 import { getSmtpCredentials, hydrateSmtpCredentialsFromEnv } from './credentialStore.js';
 
 const SMTP_SEND_ATTEMPTS = Math.max(1, Number(process.env.SMTP_SEND_ATTEMPTS || 3));
@@ -97,6 +98,24 @@ function isRetryableError(error) {
   return responseCode >= 400 && responseCode < 500;
 }
 
+async function resolveSmtpHost(hostname) {
+  const forceIpv4 = String(process.env.SMTP_FORCE_IPV4 || 'true').toLowerCase() !== 'false';
+  if (!forceIpv4) {
+    return { host: hostname, family: undefined };
+  }
+
+  try {
+    const result = await dns.lookup(hostname, { family: 4 });
+    if (result?.address) {
+      return { host: result.address, family: 4 };
+    }
+  } catch (error) {
+    console.warn(`[SMTP DNS Warning] Unable to resolve IPv4 for ${hostname}: ${error?.message || 'unknown error'}`);
+  }
+
+  return { host: hostname, family: undefined };
+}
+
 async function createTransport() {
   await hydrateSmtpCredentialsFromEnv();
   const envConfig = normalizeSmtpConfig(getEnvSmtpConfig());
@@ -108,8 +127,11 @@ async function createTransport() {
     return { transporter: null, from: null, reason: 'SMTP is not configured (env or MongoDB credentials missing)' };
   }
 
+  const resolved = await resolveSmtpHost(config.host);
+
   const transporter = nodemailer.createTransport({
-    host: config.host,
+    host: resolved.host,
+    family: resolved.family,
     port: Number(config.port || 587),
     secure: Number(config.port || 587) === 465,
     requireTLS: Number(config.port || 587) !== 465,
