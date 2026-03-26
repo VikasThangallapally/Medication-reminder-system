@@ -7,28 +7,49 @@ import { emitMedicineReminder } from '../socket/socketServer.js';
 
 let jobsStarted = false;
 const emittedReminderKeys = new Set();
+const REMINDER_TIMEZONE = process.env.REMINDER_TIMEZONE || 'Asia/Kolkata';
 
-function toDateKey(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+function getZonedParts(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: REMINDER_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(date).reduce((acc, item) => {
+    if (item.type !== 'literal') {
+      acc[item.type] = item.value;
+    }
+    return acc;
+  }, {});
+
+  return {
+    dateKey: `${parts.year}-${parts.month}-${parts.day}`,
+    timeKey: `${parts.hour}:${parts.minute}`,
+    weekday: String(parts.weekday || '').toLowerCase(),
+  };
 }
 
-function toTimeKey(date) {
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
+function toDateKey(date) {
+  return getZonedParts(date).dateKey;
 }
 
 function weekdayKey(date) {
-  const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  return weekdays[date.getDay()];
+  return getZonedParts(date).weekday;
+}
+
+function toTimeKey(date) {
+  return getZonedParts(date).timeKey;
 }
 
 function isActiveToday(medicine, todayDateKey, todayWeekday) {
-  const start = new Date(medicine.startDate).toISOString().slice(0, 10);
-  const end = new Date(medicine.endDate).toISOString().slice(0, 10);
+  const start = toDateKey(new Date(medicine.startDate));
+  const end = toDateKey(new Date(medicine.endDate));
   const hasDayRules = Array.isArray(medicine.daysOfWeek) && medicine.daysOfWeek.length > 0;
   const dayAllowed = !hasDayRules || medicine.daysOfWeek.includes(todayWeekday);
   return start <= todayDateKey && todayDateKey <= end && dayAllowed;
@@ -176,7 +197,7 @@ export function startCronJobs() {
     } catch (error) {
       console.error('Cron reminder check failed:', error.message);
     }
-  });
+  }, { timezone: REMINDER_TIMEZONE });
 
   // Cleanup very old reminder logs once daily.
   cron.schedule('0 2 * * *', async () => {
@@ -187,5 +208,5 @@ export function startCronJobs() {
     } catch (error) {
       console.error('Cron cleanup failed:', error.message);
     }
-  });
+  }, { timezone: REMINDER_TIMEZONE });
 }
