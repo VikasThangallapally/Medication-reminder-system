@@ -9,30 +9,10 @@ import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 
 const app = express();
 
-const defaultAllowedOrigins = ['http://localhost:5173', 'http://localhost:5174'];
-const envAllowedOrigins = (process.env.CLIENT_URL || '')
-  .split(',')
-  .map((item) => item.trim())
-  .filter(Boolean);
-const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...envAllowedOrigins])];
-const localhostOriginPattern = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/;
-const vercelOriginPattern = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i;
-
 app.use(
   cors({
-    origin(origin, callback) {
-      if (
-        !origin
-        || allowedOrigins.includes(origin)
-        || localhostOriginPattern.test(origin)
-        || vercelOriginPattern.test(origin)
-      ) {
-        callback(null, true);
-        return;
-      }
-
-      callback(new Error('CORS origin not allowed'));
-    },
+    origin: true,
+    credentials: true,
   })
 );
 app.use(express.json());
