@@ -1,11 +1,31 @@
 import nodemailer from 'nodemailer';
 import { getSmtpCredentials, hydrateSmtpCredentialsFromEnv } from './credentialStore.js';
 
+function getEnvSmtpConfig() {
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  if (!host || !user || !pass) {
+    return null;
+  }
+
+  return {
+    host,
+    port: Number(process.env.SMTP_PORT || 587),
+    user,
+    pass,
+    from: process.env.SMTP_FROM || user,
+  };
+}
+
 async function createTransport() {
   await hydrateSmtpCredentialsFromEnv();
-  const config = await getSmtpCredentials();
+  const dbConfig = await getSmtpCredentials();
+  const hasDbConfig = Boolean(dbConfig?.host && dbConfig?.user && dbConfig?.pass);
+  const config = hasDbConfig ? dbConfig : getEnvSmtpConfig();
 
-  if (!config?.host || !config?.user || !config?.pass) {
+  if (!config) {
     return { transporter: null, from: null, reason: 'SMTP is not configured in MongoDB credentials' };
   }
 

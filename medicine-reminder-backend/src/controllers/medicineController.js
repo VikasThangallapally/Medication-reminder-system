@@ -1,5 +1,7 @@
 import Medicine from '../models/Medicine.js';
 import ReminderLog from '../models/ReminderLog.js';
+import User from '../models/User.js';
+import sendSmtpMail from '../utils/sendSmtpMail.js';
 
 function normalizeDateOnly(dateValue) {
   return new Date(new Date(dateValue).toISOString().slice(0, 10));
@@ -97,6 +99,51 @@ export async function createMedicine(req, res, next) {
       startDate: parsedStart,
       endDate: parsedEnd,
     });
+
+    if (req.user?.id) {
+      const user = await User.findById(req.user.id).select('name email').lean();
+      if (user?.email) {
+        const timeList = Array.isArray(timeSlots) ? timeSlots.join(', ') : '';
+        const dayList = normalizeDays(daysOfWeek).join(', ');
+        const emailResult = await sendSmtpMail({
+          to: user.email,
+          subject: `Medicine Added: ${name}`,
+          html: `
+            <div style="font-family:Arial,sans-serif;line-height:1.5;color:#0f172a">
+              <h2 style="margin:0 0 12px">Medicine Added Successfully</h2>
+              <p>Hello ${user.name || 'User'},</p>
+              <p>Your medicine has been saved and reminders are active.</p>
+              <ul style="padding-left:18px">
+                <li><strong>Medicine:</strong> ${name}</li>
+                <li><strong>Dosage:</strong> ${dosage}</li>
+                <li><strong>Disease:</strong> ${diseaseName || 'N/A'}</li>
+                <li><strong>Frequency:</strong> ${frequency}</li>
+                <li><strong>Time Slots:</strong> ${timeList || 'N/A'}</li>
+                <li><strong>Days:</strong> ${dayList}</li>
+                <li><strong>Start Date:</strong> ${parsedStart.toISOString().slice(0, 10)}</li>
+                <li><strong>End Date:</strong> ${parsedEnd.toISOString().slice(0, 10)}</li>
+              </ul>
+            </div>
+          `,
+          text: [
+            `Hello ${user.name || 'User'},`,
+            'Your medicine has been saved and reminders are active.',
+            `Medicine: ${name}`,
+            `Dosage: ${dosage}`,
+            `Disease: ${diseaseName || 'N/A'}`,
+            `Frequency: ${frequency}`,
+            `Time Slots: ${timeList || 'N/A'}`,
+            `Days: ${dayList}`,
+            `Start Date: ${parsedStart.toISOString().slice(0, 10)}`,
+            `End Date: ${parsedEnd.toISOString().slice(0, 10)}`,
+          ].join('\n'),
+        });
+
+        if (!emailResult.sent) {
+          console.warn(`[Medicine Add Email Failed] user=${user.email} | reason=${emailResult.reason}`);
+        }
+      }
+    }
 
     return res.status(201).json({ medicine });
   } catch (error) {
