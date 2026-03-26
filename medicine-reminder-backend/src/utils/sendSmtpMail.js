@@ -9,6 +9,15 @@ function sanitizeEmailAddress(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function extractEmailAddress(value) {
+  const raw = String(value || '').trim();
+  const match = raw.match(/<([^>]+)>/);
+  if (match?.[1]) {
+    return sanitizeEmailAddress(match[1]);
+  }
+  return sanitizeEmailAddress(raw);
+}
+
 function parseRecipients(to) {
   const values = Array.isArray(to) ? to : String(to || '').split(',');
   const recipients = values
@@ -26,7 +35,8 @@ function normalizeSmtpConfig(config) {
   const host = String(config.host || '').trim().toLowerCase();
   const user = sanitizeEmailAddress(config.user);
   const port = Number(config.port || 587);
-  let from = sanitizeEmailAddress(config.from || user || '');
+  let from = String(config.from || user || '').trim();
+  let fromEmail = extractEmailAddress(from);
   let pass = String(config.pass || '');
 
   // Gmail app passwords are shown with spaces in UI, but SMTP expects raw characters.
@@ -41,8 +51,9 @@ function normalizeSmtpConfig(config) {
   }
 
   // Gmail often rejects or downgrades delivery when From differs from authenticated user.
-  if (host.includes('gmail.com') && from !== user) {
+  if (host.includes('gmail.com') && fromEmail !== user) {
     from = user;
+    fromEmail = user;
   }
 
   return {
@@ -57,7 +68,17 @@ function normalizeSmtpConfig(config) {
 function getEnvSmtpConfig() {
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const pass = process.env.SMTP_PASS || process.env.SENDGRID_API_KEY;
+
+  if (process.env.SENDGRID_API_KEY && !host && !user) {
+    return {
+      host: 'smtp.sendgrid.net',
+      port: Number(process.env.SMTP_PORT || 587),
+      user: 'apikey',
+      pass: process.env.SENDGRID_API_KEY,
+      from: process.env.SENDGRID_FROM || process.env.SMTP_FROM || process.env.SMTP_USER || '',
+    };
+  }
 
   if (!host || !user || !pass) {
     return null;
