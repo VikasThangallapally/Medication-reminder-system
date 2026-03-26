@@ -66,11 +66,7 @@ function normalizeSmtpConfig(config) {
 }
 
 function getEnvSmtpConfig() {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS || process.env.SENDGRID_API_KEY;
-
-  if (process.env.SENDGRID_API_KEY && !host && !user) {
+  if (process.env.SENDGRID_API_KEY) {
     return {
       host: 'smtp.sendgrid.net',
       port: Number(process.env.SMTP_PORT || 587),
@@ -79,6 +75,10 @@ function getEnvSmtpConfig() {
       from: process.env.SENDGRID_FROM || process.env.SMTP_FROM || process.env.SMTP_USER || '',
     };
   }
+
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS || process.env.SENDGRID_API_KEY;
 
   if (!host || !user || !pass) {
     return null;
