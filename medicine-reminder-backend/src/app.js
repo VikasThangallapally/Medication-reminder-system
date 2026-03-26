@@ -16,11 +16,17 @@ const envAllowedOrigins = (process.env.CLIENT_URL || '')
   .filter(Boolean);
 const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...envAllowedOrigins])];
 const localhostOriginPattern = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/;
+const vercelOriginPattern = /^https:\/\/medication-reminder-system(?:-[a-z0-9-]+)?\.vercel\.app$/i;
 
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin) || localhostOriginPattern.test(origin)) {
+      if (
+        !origin
+        || allowedOrigins.includes(origin)
+        || localhostOriginPattern.test(origin)
+        || vercelOriginPattern.test(origin)
+      ) {
         callback(null, true);
         return;
       }
