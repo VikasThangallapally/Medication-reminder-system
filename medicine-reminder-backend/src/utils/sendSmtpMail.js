@@ -126,20 +126,18 @@ async function createTransport() {
     },
   });
 
+  let verifyWarning = null;
   try {
     await transporter.verify();
   } catch (error) {
-    return {
-      transporter: null,
-      from: null,
-      reason: `SMTP verify failed: ${error?.message || 'unknown error'}`,
-    };
+    verifyWarning = `SMTP verify warning: ${error?.message || 'unknown error'}`;
+    console.warn(`[SMTP Verify Warning] ${verifyWarning}`);
   }
 
   return {
     transporter,
     from: config.from || config.user,
-    reason: null,
+    reason: verifyWarning,
   };
 }
 
@@ -189,6 +187,6 @@ export default async function sendSmtpMail({ to, subject, html, text }) {
 
   return {
     sent: false,
-    reason: lastError?.message || 'Unable to send email',
+    reason: `${reason ? `${reason} | ` : ''}${lastError?.message || 'Unable to send email'}`,
   };
 }
