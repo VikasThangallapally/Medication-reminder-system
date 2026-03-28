@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import dns from 'dns/promises';
+import sendgridMail from '@sendgrid/mail';
 import { getSmtpCredentials, hydrateSmtpCredentialsFromEnv } from './credentialStore.js';
 
 const SMTP_SEND_ATTEMPTS = Math.max(1, Number(process.env.SMTP_SEND_ATTEMPTS || 3));
@@ -16,6 +17,25 @@ function extractEmailAddress(value) {
     return sanitizeEmailAddress(match[1]);
   }
   return sanitizeEmailAddress(raw);
+}
+
+function parseFromAddress(value) {
+  const raw = String(value || '').trim();
+  const angled = raw.match(/^(.*)<([^>]+)>$/);
+
+  if (angled?.[2]) {
+    const email = sanitizeEmailAddress(angled[2]);
+    const name = String(angled[1] || '').trim().replace(/^"|"$/g, '');
+    return {
+      email,
+      name: name || undefined,
+    };
+  }
+
+  return {
+    email: sanitizeEmailAddress(raw),
+    name: undefined,
+  };
 }
 
 function parseRecipients(to) {
@@ -66,19 +86,9 @@ function normalizeSmtpConfig(config) {
 }
 
 function getEnvSmtpConfig() {
-  if (process.env.SENDGRID_API_KEY) {
-    return {
-      host: 'smtp.sendgrid.net',
-      port: Number(process.env.SMTP_PORT || 587),
-      user: 'apikey',
-      pass: process.env.SENDGRID_API_KEY,
-      from: process.env.SENDGRID_FROM || process.env.SMTP_FROM || process.env.SMTP_USER || '',
-    };
-  }
-
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS || process.env.SENDGRID_API_KEY;
+  const pass = process.env.SMTP_PASS;
 
   if (!host || !user || !pass) {
     return null;
@@ -117,6 +127,66 @@ function isRetryableError(error) {
 
   // 4xx SMTP responses are usually temporary and worth retrying.
   return responseCode >= 400 && responseCode < 500;
+}
+
+function isRetryableSendGridError(error) {
+  const statusCode = Number(error?.code || error?.response?.statusCode || 0);
+  if (statusCode === 429) {
+    return true;
+  }
+  return statusCode >= 500;
+}
+
+async function sendViaSendGrid({ to, subject, html, text }) {
+  const apiKey = String(process.env.SENDGRID_API_KEY || '').trim();
+  if (!apiKey) {
+    return { sent: false, reason: 'SENDGRID_API_KEY is missing' };
+  }
+
+  const fromRaw = process.env.SENDGRID_FROM || process.env.SMTP_FROM || process.env.SMTP_USER || '';
+  const from = parseFromAddress(fromRaw);
+  if (!from.email) {
+    return { sent: false, reason: 'SENDGRID_FROM (or SMTP_FROM/SMTP_USER) is missing' };
+  }
+
+  const recipients = parseRecipients(to);
+  if (!recipients.length) {
+    return { sent: false, reason: 'Missing recipient email address' };
+  }
+
+  sendgridMail.setApiKey(apiKey);
+
+  let lastError = null;
+  for (let attempt = 1; attempt <= SMTP_SEND_ATTEMPTS; attempt += 1) {
+    try {
+      const [response] = await sendgridMail.send({
+        to: recipients,
+        from,
+        subject,
+        text,
+        html,
+      });
+
+      const statusCode = Number(response?.statusCode || 0);
+      if (statusCode >= 200 && statusCode < 300) {
+        return { sent: true };
+      }
+
+      return { sent: false, reason: `SendGrid rejected request with status ${statusCode || 'unknown'}` };
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableSendGridError(error) || attempt === SMTP_SEND_ATTEMPTS) {
+        break;
+      }
+      await delay(SMTP_RETRY_DELAY_MS * attempt);
+    }
+  }
+
+  const details = lastError?.response?.body?.errors?.map((item) => item?.message).filter(Boolean).join('; ');
+  return {
+    sent: false,
+    reason: details || lastError?.message || 'SendGrid send failed',
+  };
 }
 
 async function resolveSmtpHost(hostname) {
@@ -185,6 +255,10 @@ async function createTransport() {
 }
 
 export default async function sendSmtpMail({ to, subject, html, text }) {
+  if (process.env.SENDGRID_API_KEY) {
+    return sendViaSendGrid({ to, subject, html, text });
+  }
+
   const { transporter, from, reason } = await createTransport();
   if (!transporter) {
     return { sent: false, reason };
