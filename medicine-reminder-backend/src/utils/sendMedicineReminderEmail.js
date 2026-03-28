@@ -11,13 +11,22 @@ function normalizeBaseUrl(value) {
   return raw.replace(/\/+$/, '').replace(/\/api$/i, '');
 }
 
+function isFrontendDomain(url) {
+  return /\.vercel\.app|\.netlify\.app/i.test(String(url || ''));
+}
+
 function getApiBaseUrl() {
   const explicit = normalizeBaseUrl(process.env.API_BASE_URL);
+  const renderUrl = normalizeBaseUrl(process.env.RENDER_EXTERNAL_URL);
+
   if (explicit) {
+    // If API_BASE_URL was accidentally set to frontend URL, prefer Render backend URL.
+    if (isFrontendDomain(explicit) && renderUrl) {
+      return renderUrl;
+    }
     return explicit;
   }
 
-  const renderUrl = normalizeBaseUrl(process.env.RENDER_EXTERNAL_URL);
   if (renderUrl) {
     return renderUrl;
   }

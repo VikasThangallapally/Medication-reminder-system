@@ -4,10 +4,24 @@ import User from '../models/User.js';
 import sendPasswordResetEmail from '../utils/sendPasswordResetEmail.js';
 import generateToken from '../utils/generateToken.js';
 
-function getClientBaseUrl() {
+function normalizeWebUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return '';
+  }
+
+  try {
+    const parsed = new URL(raw);
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch {
+    return '';
+  }
+}
+
+function getClientBaseUrl(req) {
   const explicitFrontendUrl = String(process.env.FRONTEND_URL || '').trim();
   if (explicitFrontendUrl) {
-    return explicitFrontendUrl;
+    return explicitFrontendUrl.replace(/\/+$/, '');
   }
 
   const configured = (process.env.CLIENT_URL || '')
@@ -17,6 +31,11 @@ function getClientBaseUrl() {
 
   const isProduction = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
   if (isProduction && configured.length > 0) {
+    const requestOrigin = normalizeWebUrl(req?.headers?.origin || req?.headers?.referer || '');
+    if (requestOrigin && !/localhost|127\.0\.0\.1/i.test(requestOrigin)) {
+      return requestOrigin;
+    }
+
     const netlifyUrl = configured.find((url) => /\.netlify\.app/i.test(url));
     if (netlifyUrl) {
       return netlifyUrl;
@@ -111,7 +130,7 @@ export async function forgotPassword(req, res, next) {
     user.resetPasswordExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await user.save();
 
-    const baseUrl = getClientBaseUrl();
+    const baseUrl = getClientBaseUrl(req);
     const resetUrl = `${baseUrl}/reset-password?token=${rawToken}`;
     const resetPath = `/reset-password?token=${rawToken}`;
     const emailResult = await sendPasswordResetEmail({
