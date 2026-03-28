@@ -4,7 +4,7 @@ import sendDoseStatusEmail from '../utils/sendDoseStatusEmail.js';
 import { verifyReminderActionToken } from '../utils/reminderActionToken.js';
 
 function getClientHomeUrl() {
-  const explicitFrontendUrl = String(process.env.FRONTEND_URL || '').trim();
+  const explicitFrontendUrl = String(process.env.FRONTEND_URL || '').trim().replace(/\/+$/, '');
   if (explicitFrontendUrl) {
     return explicitFrontendUrl;
   }
@@ -16,11 +16,13 @@ function getClientHomeUrl() {
 
   const isProduction = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
   if (isProduction && configured.length > 0) {
+    // Prefer Netlify URLs in production
     const netlifyUrl = configured.find((url) => /\.netlify\.app/i.test(url));
     if (netlifyUrl) {
       return netlifyUrl;
     }
 
+    // Fall back to any public HTTPS URL
     const publicUrl = configured.find(
       (url) => !/localhost|127\.0\.0\.1/i.test(url) && /^https?:\/\//i.test(url)
     );

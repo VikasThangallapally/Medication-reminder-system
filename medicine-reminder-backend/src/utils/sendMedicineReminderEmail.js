@@ -12,7 +12,7 @@ function normalizeBaseUrl(value) {
 }
 
 function isFrontendDomain(url) {
-  return /\.vercel\.app|\.netlify\.app/i.test(String(url || ''));
+  return /\.netlify\.app/i.test(String(url || ''));
 }
 
 function getApiBaseUrl() {
