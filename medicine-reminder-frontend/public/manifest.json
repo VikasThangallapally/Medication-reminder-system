@@ -1,36 +1,32 @@
 {
-  "name": "Medicine Reminder System",
-  "short_name": "Medicine Reminder",
+  "id": "/?app=meditrack-v2",
+  "name": "MediTrack - Medicine Reminder",
+  "short_name": "MediTrack",
   "description": "Never forget your medicine - Get timely reminders for your dosage",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3B82F6",
   "scope": "/",
   "icons": [
     {
-      "src": "/icon-192.svg",
+      "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.svg",
+      "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
-    },
-    {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
     }
   ],
   "screenshots": [
     {
-      "src": "/favicon.svg",
-      "sizes": "540x720",
-      "type": "image/svg+xml"
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ],
   "categories": ["health", "productivity"],

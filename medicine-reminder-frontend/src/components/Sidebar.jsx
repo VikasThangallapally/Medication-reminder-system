@@ -6,7 +6,12 @@ const navItems = [
   { to: '/dashboard#history', label: 'History' },
 ];
 
-export default function Sidebar({ open, onClose, user }) {
+export default function Sidebar({ open, onClose, user, onLogout }) {
+  const handleLogoutClick = () => {
+    onClose?.();
+    onLogout?.();
+  };
+
   return (
     <>
       <aside
@@ -34,9 +39,19 @@ export default function Sidebar({ open, onClose, user }) {
           ))}
         </nav>
 
-        <div className="mt-auto rounded-xl border border-cyan-300/20 bg-slate-900/45 px-3 py-2">
-          <p className="text-[10px] uppercase tracking-wider text-cyan-200/70">Signed in as</p>
-          <p className="text-lg font-semibold leading-tight text-cyan-100">{user?.name || 'User'}</p>
+        <div className="mt-auto space-y-3">
+          <div className="rounded-xl border border-cyan-300/20 bg-slate-900/45 px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wider text-cyan-200/70">Signed in as</p>
+            <p className="text-lg font-semibold leading-tight text-cyan-100">{user?.name || 'User'}</p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleLogoutClick}
+            className="w-full rounded-xl border border-rose-400/40 bg-rose-900/30 px-3 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-900/45"
+          >
+            Logout
+          </button>
         </div>
       </aside>
 

@@ -1,4 +1,5 @@
 import AppRoutes from './routes/AppRoutes';
+import InstallAppButton from './components/InstallAppButton';
 import { useTheme } from './context/ThemeContext';
 
 function App() {
@@ -21,6 +22,8 @@ function App() {
         <div className="flex-1">
           <AppRoutes />
         </div>
+
+        <InstallAppButton />
 
         <footer
           className={`mt-4 border-t px-3 py-3 text-center text-[11px] font-semibold tracking-wide sm:mt-6 sm:px-4 sm:text-xs ${

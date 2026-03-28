@@ -65,7 +65,15 @@ export default function CalendarView() {
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        user={user}
+        onLogout={() => {
+          logout();
+          navigate('/logout');
+        }}
+      />
 
       <div className="flex min-h-screen flex-1 flex-col">
         <Navbar

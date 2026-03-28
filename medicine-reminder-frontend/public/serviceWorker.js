@@ -2,8 +2,9 @@ const CACHE_NAME = 'medicine-reminder-v2';
 const urlsToCache = [
   '/',
   '/index.html',
-  '/icon-192.svg',
-  '/icon-512.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/apple-touch-icon.png',
   '/favicon.svg',
   '/manifest.json'
 ];
