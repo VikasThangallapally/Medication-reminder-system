@@ -10,6 +10,14 @@
   background-color: #030712;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -19,6 +27,10 @@ body {
     radial-gradient(circle at 76% 82%, rgba(6, 182, 212, 0.18), transparent 34%),
     linear-gradient(130deg, #020617 0%, #06101f 56%, #030712 100%);
   color: #dbeafe;
+}
+
+#root {
+  min-height: 100vh;
 }
 
 body[data-theme='light'] {
@@ -202,6 +214,19 @@ body[data-theme='light'] {
   width: 140px;
   height: 120px;
   animation: pulse-organ-b 5.5s ease-in-out infinite;
+}
+
+@media (max-width: 640px) {
+  .scene-bg .ecg-scan,
+  .scene-bg .organ-shape,
+  .scene-bg .pill-d,
+  .scene-bg .pill-e {
+    display: none;
+  }
+
+  .scene-bg .pill-shape {
+    opacity: 0.2;
+  }
 }
 
 .glass-panel {

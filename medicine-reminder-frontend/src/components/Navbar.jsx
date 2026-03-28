@@ -16,9 +16,9 @@ export default function Navbar({ onMenuToggle, user, onLogout }) {
   };
 
   return (
-    <header className="glass-panel sticky top-0 z-30 mx-3 mt-3 rounded-2xl px-4 py-3 md:mx-6 md:px-6">
+    <header className="glass-panel sticky top-0 z-30 mx-2 mt-2 rounded-2xl px-3 py-3 sm:mx-3 sm:mt-3 sm:px-4 md:mx-6 md:px-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={onMenuToggle}
@@ -29,7 +29,7 @@ export default function Navbar({ onMenuToggle, user, onLogout }) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <h1 className="font-display text-lg text-cyan-50">Medicine Reminder</h1>
+          <h1 className="truncate font-display text-base text-cyan-50 sm:text-lg">Medicine Reminder</h1>
         </div>
 
         {/* Desktop buttons */}

@@ -10,7 +10,7 @@ export default function Sidebar({ open, onClose, user }) {
   return (
     <>
       <aside
-        className={`glass-panel fixed inset-y-0 left-0 z-40 m-3 flex w-64 transform flex-col rounded-2xl px-4 py-6 transition-transform duration-200 md:static md:translate-x-0 ${
+        className={`glass-panel fixed inset-y-0 left-0 z-40 m-2 flex w-[86vw] max-w-72 transform flex-col rounded-2xl px-4 py-5 transition-transform duration-200 sm:m-3 sm:w-64 sm:py-6 md:static md:translate-x-0 ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
