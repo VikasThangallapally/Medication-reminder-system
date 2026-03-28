@@ -265,7 +265,7 @@ export default function Dashboard() {
                 <p className="text-sm text-cyan-100/75">No medicines scheduled for today.</p>
               </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {todayMedicines.map((medicine) => (
                   <MedicineCard
                     key={getId(medicine)}

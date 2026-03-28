@@ -1,0 +1,41 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bgGradient512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06B6D4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0891B2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accentGradient512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#34D399;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#10B981;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Rounded background -->
+  <rect width="512" height="512" rx="120" fill="url(#bgGradient512)"/>
+  
+  <!-- Medicine capsule left -->
+  <ellipse cx="133" cy="256" rx="42" ry="85" fill="#EC4899" opacity="0.9"/>
+  <circle cx="133" cy="171" r="42" fill="#F472B6"/>
+  
+  <!-- Medicine capsule right -->
+  <ellipse cx="379" cy="256" rx="42" ry="85" fill="#3B82F6" opacity="0.9"/>
+  <circle cx="379" cy="171" r="42" fill="#60A5FA"/>
+  
+  <!-- Center clock/timer circle -->
+  <circle cx="256" cy="293" r="93" fill="url(#accentGradient512)" opacity="0.95"/>
+  
+  <!-- Clock hands -->
+  <g stroke="white" stroke-width="8" stroke-linecap="round">
+    <!-- Hour hand -->
+    <line x1="256" y1="293" x2="256" y2="226" opacity="0.8"/>
+    <!-- Minute hand -->
+    <line x1="256" y1="293" x2="307" y2="293" opacity="0.8"/>
+  </g>
+  
+  <!-- Center dot -->
+  <circle cx="256" cy="293" r="11" fill="white"/>
+  
+  <!-- Heartbeat line accent top -->
+  <path d="M 106 106 L 133 93 L 146 133 L 173 106 L 256 133" stroke="white" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+</svg>
