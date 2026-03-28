@@ -10,6 +10,16 @@ function getClientBaseUrl() {
     .map((item) => item.trim())
     .filter(Boolean);
 
+  const isProduction = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+  if (isProduction && configured.length > 0) {
+    const publicUrl = configured.find(
+      (url) => !/localhost|127\.0\.0\.1/i.test(url) && /^https?:\/\//i.test(url)
+    );
+    if (publicUrl) {
+      return publicUrl;
+    }
+  }
+
   return configured[0] || 'http://localhost:5173';
 }
 
