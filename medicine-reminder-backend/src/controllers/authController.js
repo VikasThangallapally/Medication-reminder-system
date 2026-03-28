@@ -5,6 +5,11 @@ import sendPasswordResetEmail from '../utils/sendPasswordResetEmail.js';
 import generateToken from '../utils/generateToken.js';
 
 function getClientBaseUrl() {
+  const explicitFrontendUrl = String(process.env.FRONTEND_URL || '').trim();
+  if (explicitFrontendUrl) {
+    return explicitFrontendUrl;
+  }
+
   const configured = (process.env.CLIENT_URL || '')
     .split(',')
     .map((item) => item.trim())
@@ -12,6 +17,11 @@ function getClientBaseUrl() {
 
   const isProduction = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
   if (isProduction && configured.length > 0) {
+    const netlifyUrl = configured.find((url) => /\.netlify\.app/i.test(url));
+    if (netlifyUrl) {
+      return netlifyUrl;
+    }
+
     const publicUrl = configured.find(
       (url) => !/localhost|127\.0\.0\.1/i.test(url) && /^https?:\/\//i.test(url)
     );
