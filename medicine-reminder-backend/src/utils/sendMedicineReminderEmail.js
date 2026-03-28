@@ -1,8 +1,33 @@
 import sendSmtpMail from './sendSmtpMail.js';
 import { createReminderActionToken } from './reminderActionToken.js';
 
+function normalizeBaseUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return '';
+  }
+
+  // Allow API_BASE_URL values with or without /api suffix.
+  return raw.replace(/\/+$/, '').replace(/\/api$/i, '');
+}
+
 function getApiBaseUrl() {
-  return process.env.API_BASE_URL || 'http://localhost:5000';
+  const explicit = normalizeBaseUrl(process.env.API_BASE_URL);
+  if (explicit) {
+    return explicit;
+  }
+
+  const renderUrl = normalizeBaseUrl(process.env.RENDER_EXTERNAL_URL);
+  if (renderUrl) {
+    return renderUrl;
+  }
+
+  const isProduction = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+  if (isProduction) {
+    return '';
+  }
+
+  return 'http://localhost:5000';
 }
 
 export default async function sendMedicineReminderEmail({
@@ -16,8 +41,8 @@ export default async function sendMedicineReminderEmail({
   userId,
 }) {
   const safeName = name || 'User';
-  const canIncludeActions = Boolean(medicineId && userId);
   const apiBaseUrl = getApiBaseUrl();
+  const canIncludeActions = Boolean(medicineId && userId && apiBaseUrl);
 
   let takenActionUrl = '';
   let missedActionUrl = '';
