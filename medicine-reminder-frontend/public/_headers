@@ -1,0 +1,19 @@
+# Cache static assets long-term
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Don't cache service worker
+/serviceWorker.js
+  Cache-Control: max-age=0, no-cache, no-store, must-revalidate
+
+# Don't cache manifest
+/manifest.json
+  Cache-Control: max-age=0, no-cache, no-store, must-revalidate
+
+# Don't cache HTML index
+/index.html
+  Cache-Control: max-age=0, no-cache, no-store, must-revalidate
+
+# Default: no cache for security
+/*
+  Cache-Control: max-age=0, no-cache, no-store, must-revalidate
