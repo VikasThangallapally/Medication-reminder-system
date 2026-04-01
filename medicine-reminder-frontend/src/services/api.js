@@ -27,6 +27,20 @@ export const reminderService = {
   mark: (payload) => api.post('/reminders/mark', payload),
 };
 
+export const analyticsService = {
+  get: (days = 30) => api.get('/analytics', { params: { days } }),
+};
+
+export const caregiverService = {
+  save: (payload) => api.post('/caregiver', payload),
+};
+
+export const notificationService = {
+  getPublicKey: () => api.get('/notifications/public-key'),
+  subscribe: (payload) => api.post('/notifications/subscribe', payload),
+  unsubscribe: (payload) => api.post('/notifications/unsubscribe', payload),
+};
+
 export const authService = {
   login: (payload) => api.post('/auth/login', payload),
   register: (payload) => api.post('/auth/register', payload),

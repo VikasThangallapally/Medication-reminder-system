@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import AddMedicine from '../pages/AddMedicine';
 import CalendarView from '../pages/CalendarView';
+import Analytics from '../pages/Analytics';
+import Caregiver from '../pages/Caregiver';
 import Dashboard from '../pages/Dashboard';
 import EditMedicine from '../pages/EditMedicine';
 import ForgotPassword from '../pages/ForgotPassword';
@@ -43,6 +45,22 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute>
             <AddMedicine />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/analytics"
+        element={
+          <ProtectedRoute>
+            <Analytics />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/caregiver"
+        element={
+          <ProtectedRoute>
+            <Caregiver />
           </ProtectedRoute>
         }
       />

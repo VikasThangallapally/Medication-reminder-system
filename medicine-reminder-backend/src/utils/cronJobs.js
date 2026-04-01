@@ -2,13 +2,19 @@ import cron from 'node-cron';
 import Medicine from '../models/Medicine.js';
 import ReminderLog from '../models/ReminderLog.js';
 import sendMedicineReminderEmail from './sendMedicineReminderEmail.js';
-import sendDoseStatusEmail from './sendDoseStatusEmail.js';
+import sendEscalationAlertEmail from './sendEscalationAlertEmail.js';
+import sendPushNotification from './sendPushNotification.js';
 import { emitMedicineReminder } from '../socket/socketServer.js';
 
 let jobsStarted = false;
 const emittedReminderKeys = new Set();
 const REMINDER_TIMEZONE = process.env.REMINDER_TIMEZONE || 'Asia/Kolkata';
 const REMINDER_GRACE_MINUTES = Math.max(1, Number(process.env.REMINDER_GRACE_MINUTES || 5));
+const SECOND_REMINDER_DELAY_MINUTES = Math.max(1, Number(process.env.SECOND_REMINDER_DELAY_MINUTES || 15));
+const DEFAULT_ESCALATION_DELAY_MINUTES = Math.max(
+  SECOND_REMINDER_DELAY_MINUTES + 1,
+  Number(process.env.ESCALATION_DELAY_MINUTES || 30)
+);
 
 function getZonedParts(date = new Date()) {
   const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -85,13 +91,21 @@ function isInReminderWindow(slot, windowStartMinute, windowEndMinute) {
   return slotMinute >= windowStartMinute && slotMinute <= windowEndMinute;
 }
 
-function isBeforeReminderWindow(slot, windowStartMinute) {
-  const slotMinute = timeKeyToMinutes(slot);
-  if (slotMinute === null) {
-    return false;
+function combineDateAndTime(dateKey, timeKey) {
+  return new Date(`${dateKey}T${timeKey}:00`);
+}
+
+function addMinutes(date, minutes) {
+  return new Date(date.getTime() + minutes * 60 * 1000);
+}
+
+function getEscalationDelayMinutes(medicine) {
+  const fromMedicine = Number(medicine?.caregiverEscalationMinutes);
+  if (Number.isFinite(fromMedicine) && fromMedicine >= 5) {
+    return fromMedicine;
   }
 
-  return slotMinute < windowStartMinute;
+  return DEFAULT_ESCALATION_DELAY_MINUTES;
 }
 
 function isActiveToday(medicine, todayDateKey, todayWeekday) {
@@ -119,7 +133,7 @@ export function startCronJobs() {
       const { windowStartMinute, windowEndMinute } = getReminderWindowMinutes(timeKey);
 
       const medicines = await Medicine.find({ user: { $exists: true, $ne: null } })
-        .populate('user', 'name email')
+        .populate('user', 'name email caregiver pushSubscriptions')
         .lean();
       const activeMedicines = medicines.filter((medicine) => isActiveToday(medicine, dateKey, todayWeekday));
       const activeMedicineIds = activeMedicines.map((medicine) => medicine._id);
@@ -127,10 +141,11 @@ export function startCronJobs() {
         medicine: { $in: activeMedicineIds },
         date: dateKey,
       })
-        .select('medicine time status')
+        .select('medicine time status reminderSentAt secondReminderSentAt escalationSentAt')
         .lean();
 
       const logLookup = new Set(todayLogs.map((log) => `${String(log.medicine)}_${log.time}`));
+      const logMap = new Map(todayLogs.map((log) => [`${String(log.medicine)}_${log.time}`, log]));
 
       const dueMedicines = activeMedicines.filter((medicine) => {
         const slots = Array.isArray(medicine.timeSlots) ? medicine.timeSlots : [];
@@ -151,12 +166,38 @@ export function startCronJobs() {
 
         for (const slot of dueSlots) {
           const eventKey = `${medicineId}_${dateKey}_${slot}`;
+          const slotLogKey = `${medicineId}_${slot}`;
 
           if (emittedReminderKeys.has(eventKey)) {
             continue;
           }
 
           emittedReminderKeys.add(eventKey);
+
+          const reminderTime = new Date();
+          await ReminderLog.findOneAndUpdate(
+            {
+              medicine: medicine._id,
+              date: dateKey,
+              time: slot,
+            },
+            {
+              status: 'pending',
+              reminderSentAt: reminderTime,
+              statusUpdatedAt: reminderTime,
+            },
+            {
+              upsert: true,
+              setDefaultsOnInsert: true,
+            }
+          );
+          logMap.set(slotLogKey, {
+            medicine: medicine._id,
+            date: dateKey,
+            time: slot,
+            status: 'pending',
+            reminderSentAt: reminderTime,
+          });
 
           if (userEmail) {
             const emailResult = await sendMedicineReminderEmail({
@@ -168,6 +209,7 @@ export function startCronJobs() {
               time: slot,
               medicineId,
               userId: String(medicine?.user?._id || medicine.user),
+              reminderType: 'initial',
             });
 
             if (!emailResult.sent) {
@@ -187,6 +229,22 @@ export function startCronJobs() {
           };
 
           emitMedicineReminder(event);
+
+          await sendPushNotification(medicine?.user?.pushSubscriptions, {
+            title: 'Medicine Reminder',
+            body: `${medicine.name} (${medicine.dosage}) at ${slot}`,
+            tag: `reminder_${medicineId}_${dateKey}_${slot}`,
+            data: {
+              url: '/dashboard',
+              medicineId,
+              medicineName: medicine.name,
+              dosage: medicine.dosage,
+              date: dateKey,
+              time: slot,
+              type: 'initial',
+            },
+          });
+
           console.log(
             `[Reminder Event] ${dateKey} ${slot} | medicine=${medicine.name} | dosage=${medicine.dosage}`
           );
@@ -196,55 +254,149 @@ export function startCronJobs() {
       for (const medicine of activeMedicines) {
         const userEmail = medicine?.user?.email;
         const userName = medicine?.user?.name || 'User';
+        const caregiver = medicine?.user?.caregiver || null;
         const slots = Array.isArray(medicine.timeSlots) ? medicine.timeSlots : [];
+        const medicineId = String(medicine._id);
 
         for (const slot of slots) {
-          if (!isBeforeReminderWindow(slot, windowStartMinute)) {
-            continue;
-          }
-
-          const medicineId = String(medicine._id);
           const slotLogKey = `${medicineId}_${slot}`;
-          if (logLookup.has(slotLogKey)) {
+          const log = logMap.get(slotLogKey);
+          if (!log || log.status === 'taken') {
             continue;
           }
 
-          await ReminderLog.findOneAndUpdate(
-            {
-              medicine: medicine._id,
-              date: dateKey,
-              time: slot,
-            },
-            {
-              status: 'missed',
-            },
-            {
-              upsert: true,
-              setDefaultsOnInsert: true,
+          const now = new Date();
+          const scheduledAt = combineDateAndTime(dateKey, slot);
+          const secondReminderDueAt = addMinutes(scheduledAt, SECOND_REMINDER_DELAY_MINUTES);
+          const escalationDueAt = addMinutes(scheduledAt, getEscalationDelayMinutes(medicine));
+
+          if (!log.secondReminderSentAt && now >= secondReminderDueAt) {
+            const updatedLog = await ReminderLog.findOneAndUpdate(
+              { medicine: medicine._id, date: dateKey, time: slot },
+              { secondReminderSentAt: now, statusUpdatedAt: now },
+              { new: true }
+            ).lean();
+            logMap.set(slotLogKey, updatedLog || { ...log, secondReminderSentAt: now });
+
+            if (userEmail) {
+              const secondReminderEmail = await sendMedicineReminderEmail({
+                to: userEmail,
+                name: userName,
+                medicineName: medicine.name,
+                dosage: medicine.dosage,
+                date: dateKey,
+                time: slot,
+                medicineId,
+                userId: String(medicine?.user?._id || medicine.user),
+                reminderType: 'second',
+              });
+
+              if (!secondReminderEmail.sent) {
+                console.warn(
+                  `[Second Reminder Email Failed] ${dateKey} ${slot} | medicine=${medicine.name} | reason=${secondReminderEmail.reason}`
+                );
+              }
             }
-          );
 
-          logLookup.add(slotLogKey);
+            console.log(`[Second Reminder] ${dateKey} ${slot} | medicine=${medicine.name}`);
 
-          if (userEmail) {
-            const emailResult = await sendDoseStatusEmail({
-              to: userEmail,
-              name: userName,
+            await sendPushNotification(medicine?.user?.pushSubscriptions, {
+              title: 'Second Medicine Reminder',
+              body: `Please take ${medicine.name} (${medicine.dosage}) now`,
+              tag: `second_reminder_${medicineId}_${dateKey}_${slot}`,
+              data: {
+                url: '/dashboard',
+                medicineId,
+                medicineName: medicine.name,
+                dosage: medicine.dosage,
+                date: dateKey,
+                time: slot,
+                type: 'second',
+              },
+            });
+          }
+
+          const refreshedLog = logMap.get(slotLogKey) || log;
+          if (!refreshedLog.escalationSentAt && now >= escalationDueAt) {
+            const escalatedLog = await ReminderLog.findOneAndUpdate(
+              { medicine: medicine._id, date: dateKey, time: slot },
+              {
+                escalationSentAt: now,
+                status: 'missed',
+                statusUpdatedAt: now,
+              },
+              { new: true }
+            ).lean();
+            logMap.set(slotLogKey, escalatedLog || { ...refreshedLog, escalationSentAt: now, status: 'missed' });
+
+            if (userEmail) {
+              const patientAlert = await sendEscalationAlertEmail({
+                to: userEmail,
+                caregiverName: caregiver?.name || 'Caregiver',
+                patientName: userName,
+                medicineName: medicine.name,
+                dosage: medicine.dosage,
+                date: dateKey,
+                time: slot,
+              });
+
+              if (!patientAlert.sent) {
+                console.warn(
+                  `[Escalation Email Failed] ${dateKey} ${slot} | medicine=${medicine.name} | reason=${patientAlert.reason}`
+                );
+              }
+            }
+
+            if (caregiver?.email) {
+              const caregiverAlert = await sendEscalationAlertEmail({
+                to: caregiver.email,
+                caregiverName: caregiver.name || 'Caregiver',
+                patientName: userName,
+                medicineName: medicine.name,
+                dosage: medicine.dosage,
+                date: dateKey,
+                time: slot,
+              });
+
+              if (!caregiverAlert.sent) {
+                console.warn(
+                  `[Caregiver Escalation Email Failed] ${dateKey} ${slot} | medicine=${medicine.name} | reason=${caregiverAlert.reason}`
+                );
+              }
+            } else {
+              console.warn(
+                `[Caregiver Escalation Skipped] ${dateKey} ${slot} | medicine=${medicine.name} | reason=Caregiver email not configured`
+              );
+            }
+
+            emitMedicineReminder({
+              medicineId,
               medicineName: medicine.name,
               dosage: medicine.dosage,
               date: dateKey,
               time: slot,
-              status: 'missed',
+              userId: String(medicine?.user?._id || medicine.user),
+              type: 'escalation',
+              caregiver: caregiver || null,
             });
 
-            if (!emailResult.sent) {
-              console.warn(
-                `[Auto Missed Email Failed] ${dateKey} ${slot} | medicine=${medicine.name} | reason=${emailResult.reason}`
-              );
-            }
-          }
+            await sendPushNotification(medicine?.user?.pushSubscriptions, {
+              title: 'Missed Medicine Alert',
+              body: `${medicine.name} was missed at ${slot}. Please check now.`,
+              tag: `escalation_${medicineId}_${dateKey}_${slot}`,
+              data: {
+                url: '/dashboard',
+                medicineId,
+                medicineName: medicine.name,
+                dosage: medicine.dosage,
+                date: dateKey,
+                time: slot,
+                type: 'escalation',
+              },
+            });
 
-          console.log(`[Auto Missed] ${dateKey} ${slot} | medicine=${medicine.name}`);
+            console.log(`[Escalation] ${dateKey} ${slot} | medicine=${medicine.name}`);
+          }
         }
       }
 

@@ -21,6 +21,7 @@ export async function protect(req, res, next) {
       id: String(user._id),
       name: user.name,
       email: user.email,
+      caregiver: user.caregiver || null,
     };
 
     return next();

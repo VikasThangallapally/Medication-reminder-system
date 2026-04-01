@@ -23,6 +23,10 @@ export const createMedicineValidator = [
     .withMessage('Invalid day in daysOfWeek'),
   body('startDate').isISO8601().withMessage('Valid startDate is required'),
   body('endDate').isISO8601().withMessage('Valid endDate is required'),
+  body('caregiverEscalationMinutes')
+    .optional()
+    .isInt({ min: 5, max: 240 })
+    .withMessage('caregiverEscalationMinutes must be between 5 and 240'),
 ];
 
 export const updateMedicineValidator = [...createMedicineValidator];

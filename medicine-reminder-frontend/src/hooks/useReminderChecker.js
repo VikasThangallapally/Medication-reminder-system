@@ -20,11 +20,11 @@ function normalizeSocketUrl(baseUrl) {
   return baseUrl.replace(/\/api\/?$/, '');
 }
 
-export default function useReminderChecker({ medicines, todayKey }) {
+export default function useReminderChecker({ medicines, todayKey, onReminder }) {
   const [highlightMap, setHighlightMap] = useState({});
   const socketUrl = normalizeSocketUrl(import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_BASE_URL);
 
-  const triggerReminder = ({ medicineId, medicineName, date, time }) => {
+  const triggerReminder = ({ medicineId, medicineName, dosage, date, time }) => {
     const normalizedMedicineId = String(medicineId);
     const key = createReminderNotificationKey({
       medicineId: normalizedMedicineId,
@@ -44,6 +44,17 @@ export default function useReminderChecker({ medicines, todayKey }) {
 
     if (shown) {
       playReminderAlert();
+    }
+
+    if (typeof onReminder === 'function') {
+      onReminder({
+        reminderKey: key,
+        medicineId: normalizedMedicineId,
+        medicineName,
+        dosage,
+        date,
+        time,
+      });
     }
 
     sessionStorage.setItem(key, 'true');
@@ -76,6 +87,7 @@ export default function useReminderChecker({ medicines, todayKey }) {
             triggerReminder({
               medicineId,
               medicineName: medicine.name,
+              dosage: medicine.dosage,
               date: activeDate || todayKey,
               time: slot.time,
             });
@@ -115,6 +127,7 @@ export default function useReminderChecker({ medicines, todayKey }) {
       triggerReminder({
         medicineId: event.medicineId,
         medicineName: event.medicineName || 'your medicine',
+        dosage: event.dosage || '',
         date: event.date || todayKey,
         time: event.time,
       });
@@ -123,7 +136,7 @@ export default function useReminderChecker({ medicines, todayKey }) {
     return () => {
       socket.disconnect();
     };
-  }, [socketUrl, todayKey]);
+  }, [socketUrl, todayKey, onReminder]);
 
   const highlightedMedicineIds = useMemo(
     () => Object.keys(highlightMap).filter((id) => highlightMap[id] > Date.now()),

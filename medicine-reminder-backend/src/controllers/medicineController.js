@@ -79,7 +79,17 @@ export async function getMedicineById(req, res, next) {
 
 export async function createMedicine(req, res, next) {
   try {
-    const { name, dosage, diseaseName, frequency, timeSlots, daysOfWeek, startDate, endDate } = req.body;
+    const {
+      name,
+      dosage,
+      diseaseName,
+      frequency,
+      timeSlots,
+      daysOfWeek,
+      startDate,
+      endDate,
+      caregiverEscalationMinutes,
+    } = req.body;
 
     const parsedStart = normalizeDateOnly(startDate);
     const parsedEnd = normalizeDateOnly(endDate);
@@ -98,6 +108,7 @@ export async function createMedicine(req, res, next) {
       daysOfWeek: normalizeDays(daysOfWeek),
       startDate: parsedStart,
       endDate: parsedEnd,
+      caregiverEscalationMinutes: Number(caregiverEscalationMinutes) || 30,
     });
 
     if (req.user?.id) {
@@ -161,7 +172,17 @@ export async function createMedicine(req, res, next) {
 
 export async function updateMedicine(req, res, next) {
   try {
-    const { name, dosage, diseaseName, frequency, timeSlots, daysOfWeek, startDate, endDate } = req.body;
+    const {
+      name,
+      dosage,
+      diseaseName,
+      frequency,
+      timeSlots,
+      daysOfWeek,
+      startDate,
+      endDate,
+      caregiverEscalationMinutes,
+    } = req.body;
 
     const query = req.user?.id ? { _id: req.params.id, user: req.user.id } : { _id: req.params.id };
     const medicine = await Medicine.findOne(query);
@@ -184,6 +205,7 @@ export async function updateMedicine(req, res, next) {
     medicine.daysOfWeek = normalizeDays(daysOfWeek);
     medicine.startDate = parsedStart;
     medicine.endDate = parsedEnd;
+    medicine.caregiverEscalationMinutes = Number(caregiverEscalationMinutes) || 30;
 
     const updated = await medicine.save();
 
@@ -231,6 +253,7 @@ export async function markMedicineStatus(req, res, next) {
       },
       {
         status,
+        statusUpdatedAt: new Date(),
       },
       {
         new: true,

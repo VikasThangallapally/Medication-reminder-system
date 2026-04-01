@@ -232,6 +232,7 @@ export async function markReminder(req, res, next) {
       },
       {
         status,
+        statusUpdatedAt: new Date(),
       },
       {
         new: true,

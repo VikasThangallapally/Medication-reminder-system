@@ -21,8 +21,25 @@ const reminderLogSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['taken', 'missed'],
+      enum: ['pending', 'taken', 'missed'],
       required: true,
+      default: 'pending',
+    },
+    reminderSentAt: {
+      type: Date,
+      default: null,
+    },
+    secondReminderSentAt: {
+      type: Date,
+      default: null,
+    },
+    escalationSentAt: {
+      type: Date,
+      default: null,
+    },
+    statusUpdatedAt: {
+      type: Date,
+      default: null,
     },
   },
   {

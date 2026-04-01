@@ -3,55 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#3B82F6" />
-    <meta name="description" content="Never forget your medicine - Get timely reminders for your dosage" />
+    <meta name="theme-color" content="#0f766e" />
+    <meta name="description" content="MediTrack medicine reminders with offline support and installable app experience." />
     <meta name="apple-mobile-web-app-capable" content="true" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Medicine Reminder" />
-    <link rel="icon" type="image/png" href="/icon-192.png" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="MediTrack" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="MediTrack" />
+    <meta name="msapplication-TileColor" content="#0f766e" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
     <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <title>Medicine Reminder</title>
+    <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
+    <title>MediTrack - Medicine Reminder</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-    <script>
-      // Register service worker for PWA functionality
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/serviceWorker.js')
-            .then((registration) => {
-              console.log('Service Worker registered:', registration);
-
-              registration.update();
-
-              if (registration.waiting) {
-                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-              }
-
-              registration.addEventListener('updatefound', () => {
-                const installingWorker = registration.installing;
-                if (!installingWorker) {
-                  return;
-                }
-
-                installingWorker.addEventListener('statechange', () => {
-                  if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
-                  }
-                });
-              });
-            })
-            .catch((error) => {
-              console.log('Service Worker registration failed:', error);
-            });
-
-          navigator.serviceWorker.addEventListener('controllerchange', () => {
-            window.location.reload();
-          });
-        });
-      }
-    </script>
   </body>
 </html>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-export default function InstallAppButton() {
+export default function InstallAppButton({ variant = 'floating' }) {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isStandalone, setIsStandalone] = useState(false);
 
@@ -34,14 +34,28 @@ export default function InstallAppButton() {
     return null;
   }
 
+  if (variant === 'inline') {
+    return (
+      <button
+        type="button"
+        onClick={onInstallClick}
+        className="w-full rounded-2xl bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 px-5 py-3.5 text-base font-extrabold text-slate-950 shadow-xl shadow-cyan-900/40 transition hover:from-cyan-400 hover:to-emerald-400"
+        aria-label="Download app"
+      >
+        Download App
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
       onClick={onInstallClick}
-      className="fixed bottom-4 right-4 z-50 rounded-full bg-gradient-to-r from-cyan-500 to-emerald-500 px-4 py-2 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-900/40 hover:from-cyan-400 hover:to-emerald-400"
-      aria-label="Install app"
+      className="install-fab"
+      aria-label="Download app"
     >
-      Install App
+      <span className="install-fab__title">Download App</span>
+      <span className="install-fab__subtitle">Install on mobile or laptop</span>
     </button>
   );
 }

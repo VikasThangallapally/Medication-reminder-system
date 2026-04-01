@@ -60,10 +60,12 @@ export function emitMedicineReminder(event) {
     return;
   }
 
+  const channel = event?.type === 'escalation' ? 'medicineEscalation' : 'medicineReminder';
+
   if (event?.userId) {
-    ioInstance.to(`user:${event.userId}`).emit('medicineReminder', event);
+    ioInstance.to(`user:${event.userId}`).emit(channel, event);
     return;
   }
 
-  ioInstance.emit('medicineReminder', event);
+  ioInstance.emit(channel, event);
 }

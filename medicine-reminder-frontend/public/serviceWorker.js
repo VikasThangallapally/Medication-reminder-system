@@ -1,11 +1,12 @@
 const CACHE_NAME = 'medicine-reminder-v2';
 const urlsToCache = [
   '/',
+  '/dashboard',
+  '/analytics',
+  '/caregiver',
   '/index.html',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/apple-touch-icon.png',
-  '/favicon.svg',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
   '/manifest.json'
 ];
 
@@ -74,6 +75,31 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Serve cached static files first for quick mobile app load.
+  if (/\.(?:js|css|png|jpg|jpeg|svg|webp|json)$/i.test(requestUrl.pathname)) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) {
+          return cached;
+        }
+
+        return fetch(event.request).then((response) => {
+          if (
+            response &&
+            response.status === 200 &&
+            response.type !== 'error' &&
+            requestUrl.origin === self.location.origin
+          ) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
@@ -99,5 +125,58 @@ self.addEventListener('fetch', (event) => {
 
         return caches.match('/index.html');
       })
+  );
+});
+
+self.addEventListener('push', (event) => {
+  const fallback = {
+    title: 'Medicine Reminder',
+    body: 'It is time to take your medicine.',
+    tag: 'medicine-reminder',
+    data: {
+      url: '/dashboard',
+    },
+  };
+
+  const payload = (() => {
+    try {
+      return event.data ? event.data.json() : fallback;
+    } catch {
+      return fallback;
+    }
+  })();
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title || fallback.title, {
+      body: payload.body || fallback.body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: payload.tag || fallback.tag,
+      renotify: true,
+      data: payload.data || fallback.data,
+      requireInteraction: true,
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetPath = event.notification?.data?.url || '/dashboard';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if ('focus' in client) {
+          client.navigate(targetPath);
+          return client.focus();
+        }
+      }
+
+      if (clients.openWindow) {
+        return clients.openWindow(targetPath);
+      }
+
+      return null;
+    })
   );
 });

@@ -1,9 +1,24 @@
 import AppRoutes from './routes/AppRoutes';
 import InstallAppButton from './components/InstallAppButton';
+import MobileBottomNav from './components/MobileBottomNav';
 import { useTheme } from './context/ThemeContext';
+import { useEffect } from 'react';
+import useAuth from './hooks/useAuth';
+import { ensurePushSubscription } from './utils/pushNotifications';
 
 function App() {
   const { isLight } = useTheme();
+  const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    ensurePushSubscription().catch((error) => {
+      console.warn('Push setup failed:', error?.message || error);
+    });
+  }, [isAuthenticated]);
 
   return (
     <div className={`scene-bg min-h-screen font-body overflow-x-hidden ${isLight ? 'theme-light text-slate-800' : 'theme-dark text-slate-100'}`}>
@@ -19,10 +34,11 @@ function App() {
         <span className="organ-shape organ-b" />
       </div>
       <div className="relative z-10 flex min-h-screen flex-col pb-[env(safe-area-inset-bottom)]">
-        <div className="flex-1">
+        <div className="flex-1 pb-16 md:pb-0">
           <AppRoutes />
         </div>
 
+        <MobileBottomNav />
         <InstallAppButton />
 
         <footer

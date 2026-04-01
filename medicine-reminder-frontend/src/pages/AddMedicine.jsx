@@ -26,6 +26,7 @@ export default function AddMedicine() {
     timeSlots: ['08:00'],
     startDate: '',
     endDate: '',
+    caregiverEscalationMinutes: 30,
   });
 
   const onChange = (e) => {
@@ -187,6 +188,21 @@ export default function AddMedicine() {
                   onChange={onChange}
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900"
                 />
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-slate-700">Caregiver Escalation (minutes)</label>
+                <input
+                  name="caregiverEscalationMinutes"
+                  type="number"
+                  min={5}
+                  max={240}
+                  required
+                  value={form.caregiverEscalationMinutes}
+                  onChange={onChange}
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900"
+                />
+                <p className="mt-1 text-xs text-slate-500">Minimum 5 minutes.</p>
               </div>
             </div>
 

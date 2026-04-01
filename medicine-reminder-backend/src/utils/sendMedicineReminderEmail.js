@@ -48,8 +48,10 @@ export default async function sendMedicineReminderEmail({
   time,
   medicineId,
   userId,
+  reminderType = 'initial',
 }) {
   const safeName = name || 'User';
+  const isSecondReminder = reminderType === 'second';
   const apiBaseUrl = getApiBaseUrl();
   const canIncludeActions = Boolean(medicineId && userId && apiBaseUrl);
 
@@ -99,23 +101,23 @@ export default async function sendMedicineReminderEmail({
 
   const html = `
     <div style="font-family:Arial,sans-serif;line-height:1.5;color:#0f172a">
-      <h2 style="margin:0 0 12px">Medicine Reminder</h2>
+      <h2 style="margin:0 0 12px">${isSecondReminder ? 'Second Medicine Reminder' : 'Medicine Reminder'}</h2>
       <p>Hello ${safeName},</p>
-      <p>It is time to take your medicine.</p>
+      <p>${isSecondReminder ? 'This is a second reminder for your medicine dose.' : 'It is time to take your medicine.'}</p>
       <ul style="padding-left:18px">
         <li><strong>Medicine:</strong> ${medicineName}</li>
         <li><strong>Dosage:</strong> ${dosage}</li>
         <li><strong>Date:</strong> ${date}</li>
         <li><strong>Time:</strong> ${time}</li>
       </ul>
-      <p>Please take your medicine as scheduled.</p>
+      <p>${isSecondReminder ? 'Please mark the dose as taken as soon as possible.' : 'Please take your medicine as scheduled.'}</p>
       ${actionHtml}
     </div>
   `;
 
   const text = [
     `Hello ${safeName},`,
-    'It is time to take your medicine.',
+    isSecondReminder ? 'This is a second reminder for your medicine dose.' : 'It is time to take your medicine.',
     `Medicine: ${medicineName}`,
     `Dosage: ${dosage}`,
     `Date: ${date}`,
@@ -125,7 +127,7 @@ export default async function sendMedicineReminderEmail({
 
   return sendSmtpMail({
     to,
-    subject: `Medicine Reminder: ${medicineName} at ${time}`,
+    subject: `${isSecondReminder ? 'Second Reminder' : 'Medicine Reminder'}: ${medicineName} at ${time}`,
     html,
     text,
   });

@@ -48,6 +48,12 @@ const medicineSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    caregiverEscalationMinutes: {
+      type: Number,
+      min: 5,
+      max: 240,
+      default: 30,
+    },
   },
   {
     timestamps: true,

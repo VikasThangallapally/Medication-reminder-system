@@ -1,8 +1,10 @@
 import { format } from 'date-fns';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AlarmReminderModal from '../components/AlarmReminderModal';
 import HistoryList from '../components/HistoryList';
 import useAuth from '../hooks/useAuth';
+import useAlarm from '../hooks/useAlarm';
 import useReminderChecker from '../hooks/useReminderChecker';
 import Loader from '../components/Loader';
 import MedicineCard from '../components/MedicineCard';
@@ -113,18 +115,23 @@ export default function Dashboard() {
     [todayMedicines]
   );
 
+  const { activeReminder, triggerAlarm, acknowledgeAlarm, snoozeAlarm } = useAlarm({ repeatMinutes: 2 });
+
   const { highlightedMedicineIds } = useReminderChecker({
     medicines: todayMedicines,
     todayKey,
+    onReminder: triggerAlarm,
   });
 
-  const markStatus = async (medicine, status) => {
+  const markStatus = async (medicine, status, timeOverride, dateOverride) => {
     try {
-      const targetSlot = medicine.timeSlots.find((slot) => slot.status === 'pending') || medicine.timeSlots[0];
+      const targetSlot = timeOverride
+        ? medicine.timeSlots.find((slot) => slot.time === timeOverride) || medicine.timeSlots[0]
+        : (medicine.timeSlots.find((slot) => slot.status === 'pending') || medicine.timeSlots[0]);
 
       const payload = {
         medicineId: getId(medicine),
-        date: todayKey,
+        date: dateOverride || todayKey,
         time: targetSlot?.time,
         status,
       };
@@ -143,6 +150,17 @@ export default function Dashboard() {
     } catch {
       setError('Unable to update medicine status.');
     }
+  };
+
+  const onAlarmTaken = async (reminder) => {
+    const medicine = todayMedicines.find((item) => String(getId(item)) === String(reminder.medicineId));
+    if (!medicine) {
+      acknowledgeAlarm(reminder.alarmKey);
+      return;
+    }
+
+    await markStatus(medicine, 'taken', reminder.time, reminder.date);
+    acknowledgeAlarm(reminder.alarmKey);
   };
 
   const upsertMedicineInState = useCallback((medicine) => {
@@ -345,6 +363,12 @@ export default function Dashboard() {
           setEditingMedicine(null);
         }}
         onSubmit={handleSubmitMedicine}
+      />
+
+      <AlarmReminderModal
+        reminder={activeReminder}
+        onTaken={onAlarmTaken}
+        onSnooze={(reminder) => snoozeAlarm(reminder?.alarmKey)}
       />
     </div>
   );
