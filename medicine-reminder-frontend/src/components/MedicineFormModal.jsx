@@ -201,8 +201,8 @@ export default function MedicineFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
-      <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-soft animate-float-in">
+    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-slate-950/45 p-4 touch-pan-y sm:items-center">
+      <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-soft animate-float-in max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h3 className="font-display text-2xl text-slate-900">
             {mode === 'edit' ? 'Edit Medicine' : 'Add Medicine'}

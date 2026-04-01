@@ -15,6 +15,7 @@ function urlBase64ToUint8Array(base64String) {
 
 export async function ensurePushSubscription() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    console.info('[Push] Unsupported in this environment');
     return { subscribed: false, reason: 'unsupported' };
   }
 
@@ -23,12 +24,14 @@ export async function ensurePushSubscription() {
     Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
 
   if (permission !== 'granted') {
+    console.info('[Push] Permission denied or dismissed:', permission);
     return { subscribed: false, reason: 'permission-denied' };
   }
 
   const { data } = await notificationService.getPublicKey();
   const publicKey = String(data?.publicKey || '').trim();
   if (!publicKey) {
+    console.warn('[Push] Missing public key from backend');
     return { subscribed: false, reason: 'missing-public-key' };
   }
 
@@ -43,6 +46,8 @@ export async function ensurePushSubscription() {
   await notificationService.subscribe({
     subscription: subscription.toJSON(),
   });
+
+  console.info('[Push] Subscription synced to backend');
 
   return {
     subscribed: true,

@@ -4,8 +4,8 @@ export default function Modal({ isOpen, title, message, onConfirm, onCancel }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-soft">
+    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-slate-950/45 p-4 touch-pan-y sm:items-center">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-soft max-h-[88vh] overflow-y-auto">
         <h3 className="font-display text-xl text-slate-900">{title}</h3>
         <p className="mt-2 text-sm text-slate-600">{message}</p>
 

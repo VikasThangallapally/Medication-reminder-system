@@ -4,8 +4,8 @@ export default function AlarmReminderModal({ reminder, onTaken, onSnooze }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/70 p-3 sm:items-center sm:p-5">
-      <div className="w-full max-w-lg rounded-3xl border border-amber-400/40 bg-slate-950/95 p-5 shadow-2xl shadow-amber-900/35">
+    <div className="fixed inset-0 z-[70] flex items-end justify-center overflow-y-auto bg-slate-950/70 p-3 touch-pan-y sm:items-center sm:p-5">
+      <div className="w-full max-w-lg rounded-3xl border border-amber-400/40 bg-slate-950/95 p-5 shadow-2xl shadow-amber-900/35 max-h-[90vh] overflow-y-auto">
         <div className="rounded-2xl border border-amber-300/35 bg-amber-500/15 px-3 py-1.5 text-center text-xs font-bold uppercase tracking-[0.18em] text-amber-100">
           Alarm Active
         </div>
@@ -24,14 +24,14 @@ export default function AlarmReminderModal({ reminder, onTaken, onSnooze }) {
           <button
             type="button"
             onClick={() => onTaken?.(reminder)}
-            className="rounded-2xl bg-emerald-500 px-4 py-3.5 text-base font-extrabold text-slate-950 transition hover:bg-emerald-400"
+            className="rounded-2xl bg-emerald-500 px-4 py-4 text-base font-extrabold text-slate-950 transition hover:bg-emerald-400"
           >
             Taken
           </button>
           <button
             type="button"
             onClick={() => onSnooze?.(reminder)}
-            className="rounded-2xl bg-amber-500 px-4 py-3.5 text-base font-extrabold text-slate-950 transition hover:bg-amber-400"
+            className="rounded-2xl bg-amber-500 px-4 py-4 text-base font-extrabold text-slate-950 transition hover:bg-amber-400"
           >
             Snooze (2 min)
           </button>

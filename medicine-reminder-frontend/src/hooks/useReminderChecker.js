@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import {
   createReminderNotificationKey,
@@ -23,8 +23,18 @@ function normalizeSocketUrl(baseUrl) {
 export default function useReminderChecker({ medicines, todayKey, onReminder }) {
   const [highlightMap, setHighlightMap] = useState({});
   const socketUrl = normalizeSocketUrl(import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_BASE_URL);
+  const medicinesRef = useRef(medicines);
+  const onReminderRef = useRef(onReminder);
 
-  const triggerReminder = ({ medicineId, medicineName, dosage, date, time }) => {
+  useEffect(() => {
+    medicinesRef.current = medicines;
+  }, [medicines]);
+
+  useEffect(() => {
+    onReminderRef.current = onReminder;
+  }, [onReminder]);
+
+  const triggerReminder = useCallback(({ medicineId, medicineName, dosage, date, time }) => {
     const normalizedMedicineId = String(medicineId);
     const key = createReminderNotificationKey({
       medicineId: normalizedMedicineId,
@@ -36,6 +46,13 @@ export default function useReminderChecker({ medicines, todayKey, onReminder }) 
       return;
     }
 
+    console.info('[Reminder] Triggered', {
+      medicineId: normalizedMedicineId,
+      date,
+      time,
+      source: 'interval-or-socket',
+    });
+
     const shown = sendReminderNotification({
       title: 'Medicine Reminder',
       body: `Time to take ${medicineName}`,
@@ -46,8 +63,8 @@ export default function useReminderChecker({ medicines, todayKey, onReminder }) 
       playReminderAlert();
     }
 
-    if (typeof onReminder === 'function') {
-      onReminder({
+    if (typeof onReminderRef.current === 'function') {
+      onReminderRef.current({
         reminderKey: key,
         medicineId: normalizedMedicineId,
         medicineName,
@@ -62,7 +79,7 @@ export default function useReminderChecker({ medicines, todayKey, onReminder }) 
       ...prev,
       [normalizedMedicineId]: Date.now() + 120000,
     }));
-  };
+  }, []);
 
   useEffect(() => {
     requestNotificationPermission();
@@ -76,7 +93,7 @@ export default function useReminderChecker({ medicines, todayKey, onReminder }) 
       setHighlightMap((prev) => {
         const nextHighlightMap = { ...prev };
 
-        medicines.forEach((medicine) => {
+        medicinesRef.current.forEach((medicine) => {
           const medicineId = String(getId(medicine));
 
           (medicine.timeSlots || []).forEach((slot) => {
@@ -110,13 +127,21 @@ export default function useReminderChecker({ medicines, todayKey, onReminder }) 
     const interval = setInterval(checkReminders, 60000);
 
     return () => clearInterval(interval);
-  }, [medicines, todayKey]);
+  }, [todayKey, triggerReminder]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     const socket = io(socketUrl, {
       transports: ['websocket'],
       auth: token ? { token: `Bearer ${token}` } : {},
+    });
+
+    socket.on('connect', () => {
+      console.info('[Reminder] Socket connected');
+    });
+
+    socket.on('connect_error', (error) => {
+      console.warn('[Reminder] Socket connection error:', error?.message || error);
     });
 
     socket.on('medicineReminder', (event) => {
@@ -136,7 +161,7 @@ export default function useReminderChecker({ medicines, todayKey, onReminder }) 
     return () => {
       socket.disconnect();
     };
-  }, [socketUrl, todayKey, onReminder]);
+  }, [socketUrl, todayKey, triggerReminder]);
 
   const highlightedMedicineIds = useMemo(
     () => Object.keys(highlightMap).filter((id) => highlightMap[id] > Date.now()),

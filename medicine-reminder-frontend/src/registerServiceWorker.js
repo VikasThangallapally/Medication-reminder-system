@@ -3,11 +3,16 @@ export function registerServiceWorker() {
     return;
   }
 
+  let refreshing = false;
+  const base = import.meta.env.BASE_URL || '/';
+  const workerUrl = `${base.replace(/\/$/, '')}/serviceWorker.js`;
+
   window.addEventListener('load', () => {
     navigator.serviceWorker
-      .register('/serviceWorker.js')
+      .register(workerUrl)
       .then((registration) => {
-        registration.update();
+        console.info('[SW] Registered', workerUrl);
+        registration.update().catch(() => {});
 
         if (registration.waiting) {
           registration.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -31,6 +36,10 @@ export function registerServiceWorker() {
       });
 
     navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) {
+        return;
+      }
+      refreshing = true;
       window.location.reload();
     });
   });

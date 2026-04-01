@@ -1,4 +1,5 @@
 let permissionRequested = false;
+const REMINDER_DEBUG_PREFIX = '[Reminder]';
 
 export function createReminderNotificationKey({ medicineId, date, time }) {
   return `notified_${medicineId}_${date}_${time}`;
@@ -6,6 +7,7 @@ export function createReminderNotificationKey({ medicineId, date, time }) {
 
 export async function requestNotificationPermission() {
   if (typeof window === 'undefined' || !('Notification' in window)) {
+    console.info(`${REMINDER_DEBUG_PREFIX} Notification API unsupported`);
     return 'unsupported';
   }
 
@@ -18,15 +20,19 @@ export async function requestNotificationPermission() {
   }
 
   permissionRequested = true;
-  return Notification.requestPermission();
+  const permission = await Notification.requestPermission();
+  console.info(`${REMINDER_DEBUG_PREFIX} Notification permission: ${permission}`);
+  return permission;
 }
 
 export function sendReminderNotification({ title, body, tag }) {
   if (typeof window === 'undefined' || !('Notification' in window)) {
+    console.info(`${REMINDER_DEBUG_PREFIX} Notification API unavailable`);
     return false;
   }
 
   if (Notification.permission !== 'granted') {
+    console.info(`${REMINDER_DEBUG_PREFIX} Notification blocked by permission state: ${Notification.permission}`);
     return false;
   }
 

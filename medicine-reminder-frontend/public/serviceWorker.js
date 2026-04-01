@@ -1,21 +1,21 @@
-const CACHE_NAME = 'medicine-reminder-v2';
+const CACHE_NAME = 'medicine-reminder-v3';
 const urlsToCache = [
   '/',
-  '/dashboard',
-  '/analytics',
-  '/caregiver',
   '/index.html',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
-  '/manifest.json'
+  '/manifest.json',
 ];
 
 // Install event - cache files
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache);
-    })
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(urlsToCache))
+      .catch((error) => {
+        console.warn('[SW] Cache warmup failed:', error);
+      })
   );
   self.skipWaiting();
 });
@@ -61,22 +61,34 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put('/index.html', responseToCache);
-          });
+          if (response && response.ok) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put('/index.html', responseToCache);
+            });
+          }
           return response;
         })
         .catch(async () => {
           const cached = await caches.match('/index.html');
-          return cached || Response.error();
+          if (cached) {
+            return cached;
+          }
+
+          return new Response(
+            '<!doctype html><html><body style="font-family:sans-serif;padding:16px">Offline. Please reconnect and reopen the app.</body></html>',
+            {
+              status: 200,
+              headers: { 'Content-Type': 'text/html' },
+            }
+          );
         })
     );
     return;
   }
 
   // Serve cached static files first for quick mobile app load.
-  if (/\.(?:js|css|png|jpg|jpeg|svg|webp|json)$/i.test(requestUrl.pathname)) {
+  if (/\.(?:js|css|png|jpg|jpeg|svg|webp|json|woff2?|wav)$/i.test(requestUrl.pathname)) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
         if (cached) {
@@ -118,7 +130,7 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(async () => {
-        const cached = await caches.match(event.request);
+        const cached = await caches.match(event.request, { ignoreSearch: true });
         if (cached) {
           return cached;
         }

@@ -15,13 +15,19 @@ function App() {
       return;
     }
 
-    ensurePushSubscription().catch((error) => {
+    ensurePushSubscription()
+      .then((result) => {
+        if (result?.subscribed) {
+          console.info('[Push] Subscription active');
+        }
+      })
+      .catch((error) => {
       console.warn('Push setup failed:', error?.message || error);
-    });
+      });
   }, [isAuthenticated]);
 
   return (
-    <div className={`scene-bg min-h-screen font-body overflow-x-hidden ${isLight ? 'theme-light text-slate-800' : 'theme-dark text-slate-100'}`}>
+    <div className={`scene-bg app-scroll-container min-h-screen font-body overflow-x-hidden ${isLight ? 'theme-light text-slate-800' : 'theme-dark text-slate-100'}`}>
       <div className="medical-grid" />
       <div className="ecg-scan" />
       <div className="medicine-float-layer" aria-hidden="true">
@@ -33,7 +39,7 @@ function App() {
         <span className="organ-shape organ-a" />
         <span className="organ-shape organ-b" />
       </div>
-      <div className="relative z-10 flex min-h-screen flex-col pb-[env(safe-area-inset-bottom)]">
+      <div className="relative z-10 flex min-h-screen flex-col pb-[env(safe-area-inset-bottom)] touch-pan-y">
         <div className="flex-1 pb-16 md:pb-0">
           <AppRoutes />
         </div>

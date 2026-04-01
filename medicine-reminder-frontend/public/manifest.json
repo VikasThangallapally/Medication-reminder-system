@@ -3,7 +3,7 @@
   "name": "MediTrack Medicine Reminder",
   "short_name": "MediTrack",
   "description": "Medicine schedules, reminders, analytics, and caregiver escalation in one app.",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#020617",
   "theme_color": "#0f766e",

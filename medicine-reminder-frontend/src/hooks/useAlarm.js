@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createAlarmController, createAlarmKey } from '../utils/alarm';
+import { sendReminderNotification } from '../utils/notification';
 
 export default function useAlarm({ repeatMinutes = 2 } = {}) {
   const [activeReminder, setActiveReminder] = useState(null);
@@ -28,6 +29,12 @@ export default function useAlarm({ repeatMinutes = 2 } = {}) {
       return;
     }
 
+    console.info('[Alarm] Trigger received', {
+      medicineId: reminder?.medicineId,
+      date: reminder?.date,
+      time: reminder?.time,
+    });
+
     remindersRef.current.set(key, {
       ...reminder,
       alarmKey: key,
@@ -46,6 +53,7 @@ export default function useAlarm({ repeatMinutes = 2 } = {}) {
       return;
     }
     handledKeysRef.current.add(alarmKey);
+    console.info('[Alarm] Acknowledged', alarmKey);
     clearSnoozeTimer(alarmKey);
     stopAlarm();
     setActiveReminder((prev) => (prev?.alarmKey === alarmKey ? null : prev));
@@ -57,6 +65,7 @@ export default function useAlarm({ repeatMinutes = 2 } = {}) {
     }
 
     stopAlarm();
+    console.info('[Alarm] Snoozed', alarmKey);
     setActiveReminder((prev) => (prev?.alarmKey === alarmKey ? null : prev));
     clearSnoozeTimer(alarmKey);
 
@@ -87,7 +96,18 @@ export default function useAlarm({ repeatMinutes = 2 } = {}) {
       return;
     }
 
-    void alarmControllerRef.current.start();
+    void alarmControllerRef.current.start().then((started) => {
+      if (started) {
+        return;
+      }
+
+      sendReminderNotification({
+        title: 'Medicine Reminder',
+        body: `Please take ${activeReminder?.medicineName || 'your medicine'} now`,
+        tag: activeReminder?.alarmKey,
+      });
+      console.warn('[Alarm] Audio could not start, notification fallback used');
+    });
 
     return () => {
       stopAlarm();

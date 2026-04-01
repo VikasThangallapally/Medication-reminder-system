@@ -62,15 +62,21 @@ export function createAlarmController() {
           audio = new Audio(alarmSoundUrl);
           audio.loop = true;
           audio.preload = 'auto';
+          audio.volume = 1;
         }
 
         await audio.play();
+        console.info('[Alarm] HTML audio started');
         return true;
-      } catch {
+      } catch (error) {
+        console.warn('[Alarm] HTML audio failed, trying fallback:', error?.message || error);
         if (!fallback) {
           fallback = createWebAudioFallback();
         }
         fallback?.start();
+        if (fallback) {
+          console.info('[Alarm] WebAudio fallback started');
+        }
         return Boolean(fallback);
       }
     },
@@ -80,6 +86,7 @@ export function createAlarmController() {
         audio.currentTime = 0;
       }
       fallback?.stop();
+      console.info('[Alarm] Stopped');
     },
   };
 }
