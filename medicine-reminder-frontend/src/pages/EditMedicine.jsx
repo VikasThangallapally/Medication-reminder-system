@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Loader from '../components/Loader';
+import MedicineIntelligenceSection from '../components/MedicineIntelligenceSection';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import useAuth from '../hooks/useAuth';
@@ -91,6 +92,21 @@ export default function EditMedicine() {
     });
   };
 
+  const onMedicineNameChange = (value) => {
+    setForm((prev) => ({ ...prev, name: value }));
+  };
+
+  const onPurposeDetected = (purpose) => {
+    setForm((prev) => ({
+      ...prev,
+      diseaseName: prev.diseaseName || purpose || '',
+    }));
+  };
+
+  const onDosageSuggestionSelect = (dosageText) => {
+    setForm((prev) => ({ ...prev, dosage: dosageText }));
+  };
+
   const slotInputs = useMemo(
     () =>
       form.timeSlots.map((slot, index) => (
@@ -154,16 +170,12 @@ export default function EditMedicine() {
 
           <form onSubmit={onSubmit} className="mt-6 space-y-5 rounded-2xl bg-white p-6 shadow-soft">
             <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="text-sm font-semibold text-slate-700">Medicine Name</label>
-                <input
-                  name="name"
-                  required
-                  value={form.name}
-                  onChange={onChange}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900"
-                />
-              </div>
+              <MedicineIntelligenceSection
+                medicineName={form.name}
+                onMedicineNameChange={onMedicineNameChange}
+                onPurposeDetected={onPurposeDetected}
+                onDosageSuggestionSelect={onDosageSuggestionSelect}
+              />
 
               <div>
                 <label className="text-sm font-semibold text-slate-700">Dosage</label>

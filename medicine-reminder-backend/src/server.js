@@ -4,12 +4,14 @@ import { connectDB } from './config/db.js';
 import app from './app.js';
 import { initializeSocket } from './socket/socketServer.js';
 import { startCronJobs } from './utils/cronJobs.js';
+import { seedMedicineInfoIfNeeded } from './utils/seedMedicineInfo.js';
 
 const PORT = Number(env.PORT) || 5000;
 
 async function bootstrap() {
   try {
     await connectDB(env.MONGO_URI);
+    await seedMedicineInfoIfNeeded();
     const httpServer = createServer(app);
     initializeSocket(httpServer);
     startCronJobs();

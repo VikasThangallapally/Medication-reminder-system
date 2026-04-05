@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import MedicineIntelligenceSection from './MedicineIntelligenceSection';
 
 const frequencyOptions = [
   { label: 'Once daily', value: 'once daily', count: 1 },
@@ -166,6 +167,21 @@ export default function MedicineFormModal({
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const onMedicineNameChange = (value) => {
+    setForm((prev) => ({ ...prev, name: value }));
+  };
+
+  const onPurposeDetected = (purpose) => {
+    setForm((prev) => ({
+      ...prev,
+      diseaseName: prev.diseaseName || purpose || '',
+    }));
+  };
+
+  const onDosageSuggestionSelect = (dosageText) => {
+    setForm((prev) => ({ ...prev, dosage: dosageText }));
+  };
+
   const updateSlot = (index, value) => {
     setForm((prev) => {
       const next = [...prev.timeSlots];
@@ -218,16 +234,12 @@ export default function MedicineFormModal({
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="text-sm font-semibold text-slate-700">Medicine Name</label>
-              <input
-                name="name"
-                required
-                value={form.name}
-                onChange={onChange}
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900"
-              />
-            </div>
+            <MedicineIntelligenceSection
+              medicineName={form.name}
+              onMedicineNameChange={onMedicineNameChange}
+              onPurposeDetected={onPurposeDetected}
+              onDosageSuggestionSelect={onDosageSuggestionSelect}
+            />
             <div>
               <label className="text-sm font-semibold text-slate-700">Dosage</label>
               <input

@@ -9,11 +9,12 @@ import useReminderChecker from '../hooks/useReminderChecker';
 import Loader from '../components/Loader';
 import MedicineCard from '../components/MedicineCard';
 import MedicineFormModal from '../components/MedicineFormModal';
+import MedicinePurposeModal from '../components/MedicinePurposeModal';
 import Modal from '../components/Modal';
 import Navbar from '../components/Navbar';
 import ReminderCard from '../components/ReminderCard';
 import Sidebar from '../components/Sidebar';
-import { medicineService, reminderService } from '../services/api';
+import { medicineInfoService, medicineService, reminderService } from '../services/api';
 
 function getId(medicine) {
   return medicine._id || medicine.id;
@@ -66,6 +67,10 @@ export default function Dashboard() {
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState(null);
   const [clearingHistory, setClearingHistory] = useState(false);
+  const [purposeModalOpen, setPurposeModalOpen] = useState(false);
+  const [purposeLoading, setPurposeLoading] = useState(false);
+  const [purposeError, setPurposeError] = useState('');
+  const [selectedMedicineInfo, setSelectedMedicineInfo] = useState(null);
 
   const todayKey = format(new Date(), 'yyyy-MM-dd');
   const nowKey = format(new Date(), 'HH:mm');
@@ -187,6 +192,7 @@ export default function Dashboard() {
         const { data } = await medicineService.create(payload);
         const created = data.medicine || data;
         upsertMedicineInState(created);
+        void openPurposeDetails(created?.name);
       }
 
       setFormModalOpen(false);
@@ -196,6 +202,27 @@ export default function Dashboard() {
       setError(err.response?.data?.message || 'Unable to save medicine.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openPurposeDetails = async (medicineName) => {
+    if (!medicineName) {
+      return;
+    }
+
+    setPurposeModalOpen(true);
+    setPurposeLoading(true);
+    setPurposeError('');
+    setSelectedMedicineInfo(null);
+
+    try {
+      const { data } = await medicineInfoService.getByName(medicineName);
+      const medicine = data?.medicine || null;
+      setSelectedMedicineInfo(medicine);
+    } catch {
+      setPurposeError('Details not found for this medicine in global database.');
+    } finally {
+      setPurposeLoading(false);
     }
   };
 
@@ -297,6 +324,7 @@ export default function Dashboard() {
                     key={getId(medicine)}
                     medicine={medicine}
                     isHighlighted={highlightedMedicineIds.includes(String(getId(medicine)))}
+                    onViewPurpose={(item) => openPurposeDetails(item?.name)}
                     onEdit={(item) => {
                       setEditingMedicine(item);
                       setFormModalOpen(true);
@@ -363,6 +391,21 @@ export default function Dashboard() {
           setEditingMedicine(null);
         }}
         onSubmit={handleSubmitMedicine}
+      />
+
+      <MedicinePurposeModal
+        isOpen={purposeModalOpen}
+        loading={purposeLoading}
+        error={purposeError}
+        medicine={selectedMedicineInfo}
+        onClose={() => {
+          if (purposeLoading) {
+            return;
+          }
+          setPurposeModalOpen(false);
+          setSelectedMedicineInfo(null);
+          setPurposeError('');
+        }}
       />
 
       <AlarmReminderModal

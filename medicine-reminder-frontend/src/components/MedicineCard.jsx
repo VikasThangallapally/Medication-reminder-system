@@ -19,6 +19,7 @@ export default function MedicineCard({
   isHighlighted,
   onEdit,
   onDelete,
+  onViewPurpose,
   onMarkTaken,
   onMarkMissed,
 }) {
@@ -41,6 +42,13 @@ export default function MedicineCard({
           <p className="text-sm text-slate-600">Days: {dayText || 'Everyday'}</p>
         </div>
         <div className="flex w-full gap-2 sm:w-auto sm:flex-col">
+          <button
+            type="button"
+            onClick={() => onViewPurpose?.(medicine)}
+            className="flex-1 rounded-lg border border-cyan-200 px-2 py-1 text-xs font-semibold text-cyan-700 hover:bg-cyan-50 sm:flex-none sm:px-3"
+          >
+            Purpose
+          </button>
           <button
             type="button"
             onClick={() => onEdit(medicine)}

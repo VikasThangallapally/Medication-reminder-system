@@ -87,15 +87,30 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Serve cached static files first for quick mobile app load.
+  // Stale-while-revalidate keeps app fast while updating assets in the background.
   if (/\.(?:js|css|png|jpg|jpeg|svg|webp|json|woff2?|wav)$/i.test(requestUrl.pathname)) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
+        const networkFetch = fetch(event.request)
+          .then((response) => {
+            if (
+              response &&
+              response.status === 200 &&
+              response.type !== 'error' &&
+              requestUrl.origin === self.location.origin
+            ) {
+              const copy = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+            }
+            return response;
+          })
+          .catch(() => cached);
+
         if (cached) {
           return cached;
         }
 
-        return fetch(event.request).then((response) => {
+        return networkFetch.then((response) => {
           if (
             response &&
             response.status === 200 &&

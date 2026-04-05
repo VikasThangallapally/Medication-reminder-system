@@ -23,6 +23,12 @@ export const medicineService = {
   markStatus: (id, payload) => api.patch(`/medicines/${id}/status`, payload),
 };
 
+export const medicineInfoService = {
+  search: (q, limit = 12) => api.get('/medicine-info', { params: { q, limit } }),
+  getByName: (name) => api.get(`/medicine-info/${encodeURIComponent(name)}`),
+  ask: (question) => api.post('/medicine-info/assistant', { question }),
+};
+
 export const reminderService = {
   mark: (payload) => api.post('/reminders/mark', payload),
 };
