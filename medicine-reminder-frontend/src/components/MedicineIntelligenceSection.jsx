@@ -1,10 +1,60 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { medicineInfoService } from '../services/api';
 
+function createOthersFallbackMedicine(name) {
+  const safeName = String(name || 'Others').trim() || 'Others';
+
+  return {
+    name: safeName,
+    category: 'Others',
+    purpose: 'General medication guidance. Use clinician instructions for final dosage.',
+    uses: ['Custom medicine entry'],
+    sideEffects: ['Depends on medicine composition'],
+    precautions: ['Consult a qualified clinician before use'],
+    lifespan: 'Refer to product label',
+    dosageByAge: [
+      {
+        ageGroup: '0-12 years',
+        dose: 'As prescribed by pediatrician',
+        frequency: 'As prescribed',
+        maxDaily: 'As prescribed',
+        notes: 'Use only with clinician advice.',
+      },
+      {
+        ageGroup: '13-64 years',
+        dose: 'As prescribed',
+        frequency: 'As prescribed',
+        maxDaily: 'Depends on medicine',
+        notes: 'Follow prescription instructions strictly.',
+      },
+      {
+        ageGroup: '65+ years',
+        dose: 'As prescribed (may need adjustment)',
+        frequency: 'As prescribed',
+        maxDaily: 'Depends on kidney/liver function',
+        notes: 'Dose adjustment may be needed in older adults.',
+      },
+    ],
+  };
+}
+
 function MedicineInfoCard({ medicine, onDosageSuggestionSelect }) {
+  const [selectedAgeGroup, setSelectedAgeGroup] = useState('');
+  const [previewSelectedOnly, setPreviewSelectedOnly] = useState(false);
+
+  useEffect(() => {
+    const firstAgeGroup = medicine?.dosageByAge?.[0]?.ageGroup || '';
+    setSelectedAgeGroup(firstAgeGroup);
+    setPreviewSelectedOnly(false);
+  }, [medicine?.name]);
+
   if (!medicine) {
     return null;
   }
+
+  const dosageGuide = Array.isArray(medicine.dosageByAge) ? medicine.dosageByAge : [];
+  const selectedDosage = dosageGuide.find((item) => item.ageGroup === selectedAgeGroup) || dosageGuide[0] || null;
+  const visibleDosageItems = previewSelectedOnly && selectedDosage ? [selectedDosage] : dosageGuide;
 
   return (
     <div className="mt-3 rounded-xl border border-cyan-100 bg-cyan-50/60 p-4">
@@ -47,15 +97,54 @@ function MedicineInfoCard({ medicine, onDosageSuggestionSelect }) {
         </ul>
       </div>
 
-      {Array.isArray(medicine.dosageByAge) && medicine.dosageByAge.length > 0 && (
+      {dosageGuide.length > 0 && (
         <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
           <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">Age-wise dosage guide</p>
+
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <label className="text-xs font-semibold text-emerald-900">Age group</label>
+            <select
+              value={selectedAgeGroup}
+              onChange={(event) => {
+                setSelectedAgeGroup(event.target.value);
+                setPreviewSelectedOnly(false);
+              }}
+              className="rounded-md border border-emerald-200 bg-white px-2 py-1 text-xs text-slate-900"
+            >
+              {dosageGuide.map((item) => (
+                <option key={item.ageGroup} value={item.ageGroup}>
+                  {item.ageGroup}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={() => setPreviewSelectedOnly(true)}
+              className="rounded-md border border-cyan-200 bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-800 hover:bg-cyan-100"
+            >
+              Preview selected dosage
+            </button>
+
+            {previewSelectedOnly && (
+              <button
+                type="button"
+                onClick={() => setPreviewSelectedOnly(false)}
+                className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Show all dosages
+              </button>
+            )}
+          </div>
+
           <div className="mt-2 space-y-2">
-            {medicine.dosageByAge.map((item) => {
-              const suggestion = item.frequency ? `${item.dose} | ${item.frequency}` : item.dose;
+            {visibleDosageItems.map((item) => {
+              const suggestion = item.frequency
+                ? `Age: ${item.ageGroup} | Dose: ${item.dose} | Frequency: ${item.frequency}`
+                : `Age: ${item.ageGroup} | Dose: ${item.dose}`;
               return (
                 <div key={`${item.ageGroup}-${item.dose}`} className="rounded-md border border-emerald-100 bg-white p-2">
-                  <p className="text-xs font-semibold text-emerald-900">{item.ageGroup}</p>
+                  <p className="text-xs font-semibold text-emerald-900">Age: {item.ageGroup}</p>
                   <p className="text-sm text-slate-800">Dose: {item.dose}</p>
                   {item.frequency && <p className="text-xs text-slate-600">Frequency: {item.frequency}</p>}
                   {item.maxDaily && <p className="text-xs text-slate-600">Max daily: {item.maxDaily}</p>}
@@ -171,9 +260,13 @@ export default function MedicineIntelligenceSection({
       }
       return medicine;
     } catch {
-      setInfo(null);
-      setError('Medicine not found in global database. You can continue with manual entry.');
-      return null;
+      const fallbackMedicine = createOthersFallbackMedicine(name);
+      setInfo(fallbackMedicine);
+      if (shouldAutofillPurpose && onPurposeDetected) {
+        onPurposeDetected(fallbackMedicine.purpose || '');
+      }
+      setError('Medicine not found in global database. Added to Others with general guidance.');
+      return fallbackMedicine;
     }
   };
 
@@ -227,7 +320,23 @@ export default function MedicineIntelligenceSection({
                 </button>
               ))
             ) : (
-              <p className="px-3 py-2 text-sm text-slate-500">No matches in global database.</p>
+              <div className="space-y-2 px-3 py-2">
+                <p className="text-sm text-slate-500">No matches in global database.</p>
+                {query.trim() && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const customName = query.trim();
+                      setOpen(false);
+                      onMedicineNameChange(customName);
+                      await loadDetails(customName, true);
+                    }}
+                    className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                  >
+                    Keep in Others: {query.trim()}
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -245,7 +354,7 @@ export default function MedicineIntelligenceSection({
         )}
         {manualEntry && (
           <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
-            Manual medicine entry mode
+            Others (manual medicine entry mode)
           </span>
         )}
       </div>
