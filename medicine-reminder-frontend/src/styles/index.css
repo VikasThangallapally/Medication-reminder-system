@@ -240,6 +240,16 @@ textarea {
   animation: pulse-organ-b 5.5s ease-in-out infinite;
 }
 
+.mobile-bottom-nav {
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+
+body.sidebar-open .mobile-bottom-nav {
+  transform: translateY(120%);
+  opacity: 0;
+  pointer-events: none;
+}
+
 @media (max-width: 640px) {
   .scene-bg .ecg-scan,
   .scene-bg .organ-shape,

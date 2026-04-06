@@ -8,7 +8,7 @@ const items = [
 
 export default function MobileBottomNav() {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-cyan-300/20 bg-slate-950/90 px-2 pb-[calc(env(safe-area-inset-bottom)+6px)] pt-2 backdrop-blur md:hidden">
+    <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-20 border-t border-cyan-300/20 bg-slate-950/90 px-2 pb-[calc(env(safe-area-inset-bottom)+6px)] pt-2 backdrop-blur md:hidden">
       <ul className="grid grid-cols-3 gap-2">
         {items.map((item) => (
           <li key={item.to}>

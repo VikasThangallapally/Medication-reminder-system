@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { useEffect } from 'react';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard' },
@@ -9,6 +10,18 @@ const navItems = [
 ];
 
 export default function Sidebar({ open, onClose, user, onLogout }) {
+  useEffect(() => {
+    if (open) {
+      document.body.classList.add('sidebar-open');
+    } else {
+      document.body.classList.remove('sidebar-open');
+    }
+
+    return () => {
+      document.body.classList.remove('sidebar-open');
+    };
+  }, [open]);
+
   const handleLogoutClick = () => {
     onClose?.();
     onLogout?.();
@@ -17,7 +30,7 @@ export default function Sidebar({ open, onClose, user, onLogout }) {
   return (
     <>
       <aside
-        className={`glass-panel fixed inset-y-0 left-0 z-40 m-2 flex w-[86vw] max-w-72 transform flex-col rounded-2xl px-4 py-5 transition-transform duration-200 sm:m-3 sm:w-64 sm:py-6 md:static md:translate-x-0 ${
+        className={`glass-panel fixed inset-y-0 left-0 z-50 m-2 flex w-[88vw] max-w-72 transform flex-col overflow-y-auto rounded-2xl px-4 py-5 transition-transform duration-200 sm:m-3 sm:w-64 sm:py-6 md:static md:translate-x-0 ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -61,7 +74,7 @@ export default function Sidebar({ open, onClose, user, onLogout }) {
         <button
           aria-label="Close menu"
           onClick={onClose}
-          className="fixed inset-0 z-30 bg-slate-900/35 md:hidden"
+          className="fixed inset-0 z-40 bg-slate-900/45 md:hidden"
         />
       )}
     </>
