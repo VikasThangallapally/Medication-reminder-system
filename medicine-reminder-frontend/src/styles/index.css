@@ -92,6 +92,22 @@ textarea {
   overflow-y: visible;
 }
 
+/* Respect safe-area insets on mobile (notches, rounded corners) */
+.app-scroll-container {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Prevent oversized content from exceeding viewport width */
+img, svg, canvas, iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+.glass-panel {
+  max-width: 100%;
+}
+
 .scene-bg::before,
 .scene-bg::after {
   content: '';
@@ -250,6 +266,11 @@ body.sidebar-open .mobile-bottom-nav {
   pointer-events: none;
 }
 
+/* When the sidebar drawer is open, prevent background scrolling to avoid layout shifts */
+body.sidebar-open {
+  overflow: hidden;
+}
+
 @media (max-width: 640px) {
   .scene-bg .ecg-scan,
   .scene-bg .organ-shape,
@@ -260,6 +281,22 @@ body.sidebar-open .mobile-bottom-nav {
 
   .scene-bg .pill-shape {
     opacity: 0.2;
+  }
+}
+
+/* Ensure background layers don't cause horizontal overflow on small screens */
+@media (max-width: 768px) {
+  .scene-bg,
+  .scene-bg .medicine-float-layer {
+    overflow-x: hidden !important;
+    left: 0;
+    right: 0;
+  }
+
+  /* Hide floating pills and organ shapes on smaller devices to avoid layout overflow */
+  .scene-bg .pill-shape,
+  .scene-bg .organ-shape {
+    display: none !important;
   }
 }
 

@@ -39,7 +39,7 @@ function App() {
         <span className="organ-shape organ-a" />
         <span className="organ-shape organ-b" />
       </div>
-      <div className="relative z-10 flex min-h-screen flex-col pb-[env(safe-area-inset-bottom)] touch-pan-y">
+      <div className="relative z-10 flex min-h-screen flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] touch-pan-y">
         <div className="flex-1 pb-16 md:pb-0">
           <AppRoutes />
         </div>
